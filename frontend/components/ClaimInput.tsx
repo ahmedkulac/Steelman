@@ -160,12 +160,20 @@ export default function ClaimInput({ onModeChange }: ClaimInputProps) {
       }
     } else if (error?.response?.data?.message) {
       // Backend error message
-      errorMessage = error.response.data.message;
+      const message = error.response.data?.message;
+      errorMessage = (message && typeof message === 'string') ? message : 'An error occurred';
     } else if (error?.response?.data?.error) {
-      // Backend error
+      // Backend error - ensure type safety
       const errorData = error.response.data;
-      errorMessage = errorData.error;
-      if (errorData.suggestion) {
+      // Type guard: ensure error is a string before assignment
+      const errorValue = errorData?.error;
+      if (typeof errorValue === 'string' && errorValue.length > 0) {
+        errorMessage = errorValue;
+      } else {
+        errorMessage = 'An error occurred';
+      }
+      // Add suggestion if available
+      if (errorData?.suggestion && typeof errorData.suggestion === 'string') {
         errorMessage += ` ${errorData.suggestion}`;
       }
     } else if (error?.message) {
