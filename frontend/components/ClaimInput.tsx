@@ -27,7 +27,7 @@ const claimSchema = z.object({
   claim: z
     .string()
     .url('Please enter a valid URL'),
-  category: z.string().default('other'),
+  category: z.enum(['other', 'politics', 'science', 'health', 'technology', 'economics']).default('other'),
   context: z.string().default(''),
 });
 
@@ -155,7 +155,7 @@ export default function ClaimInput() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-gray-900 hover:bg-black dark:bg-gray-100 dark:hover:bg-white disabled:bg-gray-400 disabled:cursor-not-allowed text-white dark:text-black font-semibold py-4 px-6 uppercase tracking-widest transition-colors duration-200 border border-transparent"
+        className="w-full bg-gray-900 hover:bg-yellow-300 dark:bg-gray-100 dark:hover:bg-yellow-300 disabled:bg-gray-400 disabled:cursor-not-allowed text-white hover:text-black dark:text-black dark:hover:text-black font-semibold py-4 px-6 uppercase tracking-widest transition-all duration-300 border border-transparent hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
       >
         {isSubmitting ? 'PROCESSING...' : 'STEELMAN THIS'}
       </button>
