@@ -21,10 +21,29 @@ const urlRegex = /^(https?:\/\/[^\s$.?#].[^\s]*)$/;
  */
 router.post('/', async (req: Request, res: Response) => {
     try {
-        const { url } = req.body;
+        const { url, text } = req.body;
 
-        if (!url || !urlRegex.test(url)) {
-            return res.status(400).json({ error: 'Invalid URL provided' });
+        if (!text && (!url || !urlRegex.test(url))) {
+            return res.status(400).json({ error: 'Invalid URL provided and no text content supplied' });
+        }
+
+        // If text is provided, skip scraping
+        if (text && text.length > 50) {
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[Analyze] Analyzing provided text (${text.length} chars) for URL: ${url || 'no-url'}`);
+            }
+
+            const analysis = await analyzeArticle({
+                title: 'Analyzed Text', // We don't have a title if just text is pasted, unless provided
+                content: text,
+                url: url || 'manually-provided-text',
+            });
+
+            return res.json({
+                title: 'Analyzed Text',
+                content: text,
+                analysis,
+            });
         }
 
         const platform = detectPlatform(url);
