@@ -21,7 +21,11 @@ router.use('/analyze', analyzeRoutes); // Article analysis routes
  * GET /api
  * API information endpoint
  */
+<<<<<<< Updated upstream
 router.get('/', (_req, res) => {
+=======
+router.get('/', (req, res) => {
+>>>>>>> Stashed changes
   res.json({
     message: 'Welcome to the Fact Checker API',
     version: '1.0.0',

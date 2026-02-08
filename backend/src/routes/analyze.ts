@@ -50,7 +50,11 @@ router.post('/', async (req: Request, res: Response) => {
         // 4. Analyze with AI
         const analysis = await analyzeArticle({
             title: article.title || 'Untitled Article',
+<<<<<<< Updated upstream
             content: article.textContent || '', // distinct from .content (HTML)
+=======
+            content: article.textContent || '',
+>>>>>>> Stashed changes
             url: url,
         });
 
