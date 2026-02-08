@@ -265,11 +265,6 @@ export default function HistoryPage() {
                               <span className="text-xs text-gray-500 dark:text-gray-500">
                                 Strength: {arg.strength}/10
                               </span>
-                              {entry.data.confidenceScore && (
-                                <span className="text-xs text-gray-500 dark:text-gray-500">
-                                  Confidence: {Math.round(entry.data.confidenceScore * 100)}%
-                                </span>
-                              )}
                             </div>
                           </div>
                         ))}

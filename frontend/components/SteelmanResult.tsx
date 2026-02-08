@@ -12,7 +12,6 @@
 'use client';
 
 import { CounterArgument, Claim } from '@/lib/api/claims';
-import ConfidenceBadge from './ConfidenceBadge';
 import EvidenceList from './EvidenceList';
 import SourcesList from './SourcesList';
 
@@ -89,12 +88,7 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
         )}
       </div>
 
-      {/* Confidence Score Badge */}
-      {claim.confidenceScore !== undefined && (
-        <div className="flex items-center justify-center">
-          <ConfidenceBadge score={claim.confidenceScore} />
-        </div>
-      )}
+
 
       {/* Counter Arguments Section */}
       <div className="space-y-4">

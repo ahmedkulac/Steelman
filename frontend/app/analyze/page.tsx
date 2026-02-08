@@ -176,8 +176,27 @@ export default function AnalyzePage() {
                                     {result.analysis.summary}
                                 </p>
 
-
-                            </div>
+                                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="font-semibold text-slate-700 dark:text-slate-300">Potential Bias:</span>
+                                        <div className="flex items-center">
+                                            <div className="w-32 h-3 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden mr-2">
+                                                <div
+                                                    className={`h-full ${result.analysis.biasScore > 7 ? 'bg-red-500' :
+                                                        result.analysis.biasScore > 4 ? 'bg-yellow-500' : 'bg-green-500'
+                                                        }`}
+                                                    style={{ width: `${result.analysis.biasScore * 10}%` }}
+                                                ></div>
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                                {result.analysis.biasScore}/10
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                                        {result.analysis.biasAnalysis}
+                                    </p>
+                                </div>                            </div>
 
                             {/* Claims & Counter-Arguments */}
                             <div>
@@ -209,7 +228,7 @@ export default function AnalyzePage() {
                                                 </p>
 
                                                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-
+                                                    <span className="text-xs text-slate-500">Strength: {claim.strength}/10</span>
                                                     {claim.source && (
                                                         <span className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400">
                                                             Source: {claim.source}
