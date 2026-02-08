@@ -15,6 +15,7 @@
 import { CounterArgument, Claim } from '@/lib/api/claims';
 import ConfidenceBadge from './ConfidenceBadge';
 import EvidenceList from './EvidenceList';
+import SourcesList from './SourcesList';
 
 interface SteelmanResultProps {
   claim: Claim;
@@ -83,6 +84,10 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
           Original Claim
         </h3>
         <p className="text-gray-900 dark:text-gray-100">{content}</p>
+        {/* Sources supporting the claim */}
+        {claim.claimSources && claim.claimSources.length > 0 && (
+          <SourcesList sources={claim.claimSources} title="Sources Supporting This Claim" />
+        )}
       </div>
 
       {/* Confidence Score Badge */}
@@ -148,6 +153,11 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
               {/* Evidence List (if provided) */}
               {arg.evidence && arg.evidence.length > 0 && (
                 <EvidenceList evidence={arg.evidence} />
+              )}
+
+              {/* Sources List (if provided) */}
+              {arg.sources && arg.sources.length > 0 && (
+                <SourcesList sources={arg.sources} title="Sources Supporting This Counter-Argument" />
               )}
             </div>
           </div>

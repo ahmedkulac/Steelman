@@ -17,6 +17,15 @@ import api from '../api';
 import { getCachedClaim, setCachedClaim } from '../cache';
 
 /**
+ * Source structure from API
+ */
+export interface Source {
+  title: string;
+  url: string;
+  snippet?: string;
+}
+
+/**
  * Counter-argument structure from API
  */
 export interface CounterArgument {
@@ -24,6 +33,7 @@ export interface CounterArgument {
   reasoning: string; // Why this counter-argument is strong
   evidence?: string[]; // Supporting evidence points
   strength: number; // Strength score 1-10
+  sources?: Source[]; // Online sources supporting this counter-argument
 }
 
 /**
@@ -35,6 +45,7 @@ export interface Claim {
   category?: string;
   steelmanArguments?: CounterArgument[];
   confidenceScore?: number; // 0-1
+  claimSources?: Source[]; // Online sources supporting the original claim
   processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
   errorMessage?: string;
   createdAt: string;
