@@ -1,12 +1,37 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
-import { generateSteelmanArgument, generateCacheKey } from '../services/aiService';
+import {
+  generateSteelmanArgument,
+  generateCacheKey,
+  CounterArgument,
+} from '../services/aiService';
 import { getCache, setCache } from '../utils/cache';
 import { claimRateLimiter } from '../utils/rateLimit';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Helper function to safely parse JSON string
+function parseSteelmanArguments(
+  jsonString: string | null | undefined
+): CounterArgument[] | null {
+  if (!jsonString) return null;
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error('Error parsing steelmanArguments:', error);
+    return null;
+  }
+}
+
+// Helper function to format claim response with parsed JSON
+function formatClaimResponse(claim: any) {
+  return {
+    ...claim,
+    steelmanArguments: parseSteelmanArguments(claim.steelmanArguments),
+  };
+}
 
 // Validation schemas
 const createClaimSchema = z.object({
@@ -45,7 +70,7 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
         data: {
           content: claim,
           category: category || null,
-          steelmanArguments: cachedData.counterArguments,
+          steelmanArguments: JSON.stringify(cachedData.counterArguments),
           confidenceScore: cachedData.confidence,
           processingStatus: 'completed',
           ipAddress: req.ip || null,
@@ -54,7 +79,7 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
       });
 
       return res.status(200).json({
-        ...savedClaim,
+        ...formatClaimResponse(savedClaim),
         cached: true,
       });
     }
@@ -77,7 +102,7 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
         await prisma.claim.update({
           where: { id: newClaim.id },
           data: {
-            steelmanArguments: result.counterArguments,
+            steelmanArguments: JSON.stringify(result.counterArguments),
             confidenceScore: result.confidence,
             processingStatus: 'completed',
           },
@@ -107,7 +132,7 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
 
     // Return immediately with pending status
     return res.status(202).json({
-      ...newClaim,
+      ...formatClaimResponse(newClaim),
       message: 'Claim submitted. Processing in background.',
     });
   } catch (error) {
@@ -141,7 +166,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    return res.json(claim);
+    return res.json(formatClaimResponse(claim));
   } catch (error) {
     console.error('Error fetching claim:', error);
     return res.status(500).json({
@@ -174,13 +199,14 @@ router.get('/', async (req: Request, res: Response) => {
           processingStatus: true,
           confidenceScore: true,
           createdAt: true,
+          steelmanArguments: true, // Include to parse if needed
         },
       }),
       prisma.claim.count({ where }),
     ]);
 
     return res.json({
-      claims,
+      claims: claims.map(formatClaimResponse),
       pagination: {
         page,
         limit,

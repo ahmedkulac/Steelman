@@ -39,8 +39,8 @@ model Claim {
   userId      String?  // Optional: for authenticated users
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   
-  // AI-generated results
-  steelmanArguments Json? // Array of counter-arguments
+  // AI-generated results (stored as JSON string for SQLite compatibility)
+  steelmanArguments String? // JSON string of counter-arguments array
   confidenceScore   Float?
   processingStatus  String @default("pending") // pending, processing, completed, failed
   errorMessage      String?

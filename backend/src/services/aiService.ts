@@ -48,7 +48,8 @@ export async function generateSteelmanArgument(
   }
 
   const prompt = buildSteelmanPrompt(request);
-  const modelName = process.env.AI_MODEL || 'gemini-1.5-flash';
+  // Default to gemini-2.5-flash (latest balanced model)
+  const modelName = process.env.AI_MODEL || 'gemini-2.5-flash';
 
   try {
     const model = genAI.getGenerativeModel({
@@ -108,8 +109,21 @@ export async function generateSteelmanArgument(
     }));
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Service Error:', error);
+    
+    // If model not found, suggest alternatives
+    if (error?.message?.includes('not found') || error?.message?.includes('404')) {
+      const suggestions = [
+        'Try setting AI_MODEL=gemini-2.5-flash in your .env file (current)',
+        'Or try AI_MODEL=gemini-pro as fallback',
+        'Available models: gemini-2.5-flash, gemini-2.5-pro, gemini-pro, gemini-1.0-pro',
+      ];
+      throw new Error(
+        `Model "${modelName}" not found. ${suggestions.join('. ')}. Original error: ${error.message}`
+      );
+    }
+    
     throw new Error(
       `Failed to generate steelman argument: ${error instanceof Error ? error.message : 'Unknown error'}`
     );

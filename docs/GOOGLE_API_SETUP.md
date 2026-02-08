@@ -24,9 +24,11 @@
 
 The app supports these Gemini models (set via `AI_MODEL` in `.env`):
 
-- `gemini-1.5-flash` (default) - Fast and efficient, good for most use cases
+- `gemini-2.5-flash` (default) - Latest balanced model, excellent speed + capability, 1M token context
+- `gemini-2.5-pro` - Latest powerful reasoning model
+- `gemini-1.5-flash` - Fast and efficient, good for most use cases
 - `gemini-1.5-pro` - More capable, better for complex reasoning
-- `gemini-pro` - Previous generation model
+- `gemini-pro` - Stable, widely available fallback
 - `gemini-1.0-pro` - Stable production model
 
 ## Configuration
@@ -54,9 +56,14 @@ The app includes rate limiting (10 requests/hour per IP) to help stay within API
 
 ## Cost
 
-- **Free tier**: Generous free quota
-- **Paid tier**: Pay-as-you-go pricing
+- **Free tier**: ✅ Generous free quota (no credit card required initially)
+  - 15 requests per minute
+  - Model: `gemini-pro` recommended
+  - Check quota: https://aistudio.google.com/app/apikey
+- **Paid tier**: Pay-as-you-go pricing (if you exceed free tier)
 - Check current pricing: https://ai.google.dev/pricing
+
+**Note:** The app is configured for free tier with conservative rate limits (10 requests/hour/IP).
 
 ## Troubleshooting
 

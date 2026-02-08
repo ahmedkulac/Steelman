@@ -20,6 +20,21 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Fact Checker API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      api: '/api',
+      claims: '/api/claims',
+    },
+    frontend: 'http://localhost:3000',
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
@@ -36,8 +51,11 @@ app.use('/api', apiRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Initialize Redis (non-blocking)
-initRedis().catch(console.error);
+// Initialize Redis (non-blocking, optional)
+// App works fine without Redis - caching will be disabled
+initRedis().catch((error) => {
+  console.warn('Redis initialization failed (optional):', error.message);
+});
 
 // Start server
 app.listen(PORT, () => {

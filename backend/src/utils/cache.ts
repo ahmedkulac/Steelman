@@ -6,6 +6,12 @@ let redisClient: ReturnType<typeof createClient> | null = null;
  * Initialize Redis client
  */
 export async function initRedis(): Promise<void> {
+  // Skip Redis if explicitly disabled
+  if (process.env.REDIS_ENABLED === 'false') {
+    console.log('ℹ️  Redis disabled via REDIS_ENABLED=false');
+    return;
+  }
+
   if (redisClient) {
     return;
   }
@@ -15,17 +21,32 @@ export async function initRedis(): Promise<void> {
   try {
     redisClient = createClient({
       url: redisUrl,
+      socket: {
+        reconnectStrategy: false, // Don't auto-reconnect
+        connectTimeout: 2000, // 2 second timeout
+      },
     });
 
     redisClient.on('error', (err) => {
-      console.error('Redis Client Error:', err);
+      console.warn('⚠️  Redis error (caching disabled):', err.message);
+      redisClient = null;
     });
 
-    await redisClient.connect();
+    // Set a timeout for connection
+    const connectPromise = redisClient.connect();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Connection timeout')), 2000)
+    );
+
+    await Promise.race([connectPromise, timeoutPromise]);
     console.log('✅ Redis connected');
-  } catch (error) {
-    console.warn('⚠️  Redis connection failed, caching disabled:', error);
+  } catch (error: any) {
+    console.warn(
+      '⚠️  Redis connection failed, caching disabled:',
+      error.message || error
+    );
     redisClient = null;
+    // Don't throw - app should work without Redis
   }
 }
 
