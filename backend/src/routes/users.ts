@@ -18,7 +18,7 @@ const router = Router();
  * GET /api/users
  * List users (placeholder)
  */
-router.get('/', (req, res) => {
+router.get('/', (_req, res) => {
   res.json({ 
     message: 'Users endpoint',
     users: []

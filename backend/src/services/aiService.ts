@@ -211,7 +211,7 @@ export async function generateSteelmanArgument(
           }
         } else {
           throw new Error(
-            `Failed to parse AI response as JSON: ${parseError.message}. ` +
+            `Failed to parse AI response as JSON: ${errorMessage}. ` +
             `No valid JSON object found in response. Please try again.`
           );
         }

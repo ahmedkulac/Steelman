@@ -13,6 +13,27 @@ A hybrid web application (mobile-optimized) that helps users fact-check claims b
 
 ## 🚀 Quick Start
 
+### Quick Deploy (Recommended)
+
+**Frontend:** Vercel | **Backend:** Railway | **Database:** Supabase
+
+1. **Set up Supabase database:** [Quick Start Guide](./docs/SUPABASE_QUICK_START.md)
+2. **Deploy backend:** Railway with Supabase connection
+3. **Deploy frontend:** Vercel
+
+See [Supabase Setup Guide](./docs/SUPABASE_SETUP.md) for complete instructions.
+
+### Deploy to Vercel (Frontend)
+
+**One-click deploy:**
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/3Mis1Cs&root-directory=frontend)
+
+Or follow the [Vercel Deployment Guide](./docs/VERCEL_DEPLOYMENT.md)
+
+---
+
+## 🚀 Quick Start (Local Development)
+
 ### Prerequisites
 
 - Node.js 18+ 
@@ -212,6 +233,28 @@ See [Troubleshooting Guide](./docs/TROUBLESHOOTING.md) for more help.
 - API keys are stored server-side only
 - Rate limiting prevents abuse
 - Input validation on all endpoints
+
+## 🚀 Deployment
+
+### Frontend (Vercel)
+
+**Quick Deploy:**
+1. Go to https://vercel.com/new
+2. Import GitHub repository
+3. Set **Root Directory** to `frontend`
+4. Add environment variable: `NEXT_PUBLIC_API_URL=https://your-backend-url/api`
+5. Deploy!
+
+See [Vercel Deployment Guide](./docs/VERCEL_DEPLOYMENT.md) for detailed instructions.
+
+### Backend (Railway/Render + Supabase)
+
+Deploy backend with Supabase database:
+- **Database**: Supabase (free PostgreSQL)
+- **Backend Hosting**: Railway (recommended) or Render
+- **Setup Guide**: [Supabase Setup Guide](./docs/SUPABASE_SETUP.md)
+
+See [Free Deployment Guide](./docs/FREE_DEPLOYMENT_GUIDE.md) for all options.
 
 ## 📄 License
 

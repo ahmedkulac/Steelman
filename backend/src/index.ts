@@ -34,7 +34,14 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 
 // Enable CORS for frontend
-app.use(cors());
+// In production, specify allowed origins for security
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000']
+    : true, // Allow all origins in development
+  credentials: true,
+};
+app.use(cors(corsOptions));
 
 // Request logging
 app.use(morgan('dev'));
@@ -49,7 +56,7 @@ app.use(express.urlencoded({ extended: true }));
  * Root endpoint - API information
  * GET /
  */
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.json({
     message: 'Fact Checker API',
     version: '1.0.0',
@@ -67,7 +74,7 @@ app.get('/', (req, res) => {
  * Health check endpoint
  * GET /health
  */
-app.get('/health', async (req, res) => {
+app.get('/health', async (_req, res) => {
   const { getCacheStats } = await import('./utils/cache');
   const cacheStats = getCacheStats();
   

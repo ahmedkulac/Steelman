@@ -6,7 +6,25 @@ For your Fact Checker app (Next.js frontend + Express backend + PostgreSQL), her
 
 ---
 
-## 🏆 **Option 1: Railway (BEST FOR FULL-STACK) - RECOMMENDED**
+## 🏆 **Option 1: Railway + Supabase (BEST FOR FULL-STACK) - RECOMMENDED**
+
+**Why Railway + Supabase:**
+- ✅ Railway: Free tier ($5/month credit)
+- ✅ Supabase: Free PostgreSQL database (500MB, 2GB bandwidth)
+- ✅ Deploys both frontend and backend together
+- ✅ No sleep (services stay awake)
+- ✅ Automatic HTTPS/SSL
+- ✅ GitHub integration
+- ✅ Easy environment variables
+
+**Setup:**
+1. **Create Supabase database** (see [Supabase Setup Guide](./SUPABASE_SETUP.md))
+2. **Deploy backend to Railway** with Supabase connection
+3. **Deploy frontend to Vercel** (or Railway)
+
+---
+
+## 🥇 **Option 1A: Railway (WITH RAILWAY DATABASE)**
 
 **Why Railway:**
 - ✅ Free tier: $5 credit/month (enough for small apps)

@@ -5,14 +5,17 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "npm run db:generate && tsc",
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "tsx src/prisma/seed.ts"
+    "db:seed": "tsx src/prisma/seed.ts",
+    "db:switch:postgres": "cp prisma/schema.postgresql.prisma prisma/schema.prisma && npm run db:generate",
+    "db:switch:sqlite": "cp prisma/schema.sqlite.backup.prisma prisma/schema.prisma && npm run db:generate"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

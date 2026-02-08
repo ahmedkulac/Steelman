@@ -19,7 +19,7 @@ router.use('/claims', claimRoutes); // Claim fact-checking routes
  * GET /api
  * API information endpoint
  */
-router.get('/', (req, res) => {
+router.get('/', (_req, res) => {
   res.json({ 
     message: 'Welcome to the Fact Checker API',
     version: '1.0.0',
