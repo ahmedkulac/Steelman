@@ -123,15 +123,6 @@ async function callOpenRouter(messages: any[], temperature: number = 0.7, jsonMo
     temperature,
   };
 
-  // Only add response_format if jsonMode is true and model supports it
-  // Some models don't support this parameter, which can cause 401 errors
-  if (jsonMode) {
-    // Gemini models via OpenRouter may not support response_format
-    // We rely on prompt instructions instead
-    // Uncomment below if your model explicitly supports it:
-    // requestBody.response_format = { type: "json_object" };
-  }
-
   try {
     const response = await axios.post(
       OPENROUTER_API_URL,

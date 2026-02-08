@@ -189,8 +189,6 @@ async function extractTikTok(url: string): Promise<SocialMediaContent> {
       }
     } catch (oembedError) {
       // Fall back to scraping if oEmbed fails
-      if (process.env.NODE_ENV === 'development') {
-      }
     }
 
     // Fallback: Scrape the page
