@@ -63,12 +63,21 @@ export default function AnalyzePage() {
             setResult(analysisResult);
         } catch (err: any) {
             console.error('Analysis failed:', err);
-            setError(
-                err.response?.data?.error ||
-                err.response?.data?.message ||
-                err.message ||
-                'Failed to analyze article. Please check the URL and try again.'
-            );
+            
+            // Extract error details from response
+            const errorData = err.response?.data;
+            let errorMessage = errorData?.error || 
+                             errorData?.details || 
+                             errorData?.message || 
+                             err.message || 
+                             'Failed to analyze content. Please check the URL and try again.';
+            
+            // Add suggestion if available
+            if (errorData?.suggestion) {
+                errorMessage += ` ${errorData.suggestion}`;
+            }
+            
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -126,12 +135,19 @@ export default function AnalyzePage() {
                             Source Article
                         </h2>
                         <div className="mb-4">
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                                {result.title}
-                            </h3>
-                            {result.byline && (
+                            <div className="flex items-center gap-2 mb-2">
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                                    {result.title}
+                                </h3>
+                                {result.platform && (
+                                    <span className="px-2 py-1 text-xs font-semibold uppercase rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                                        {result.platform}
+                                    </span>
+                                )}
+                            </div>
+                            {(result.byline || result.author) && (
                                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                                    By {result.byline}
+                                    {result.platform ? 'By' : 'By'} {result.author || result.byline}
                                 </p>
                             )}
                         </div>

@@ -140,16 +140,30 @@ export default function ClaimInput() {
         'Rate limit exceeded. Please try again later.';
     } else if (error?.response?.status === 400) {
       // Validation error
-      errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
+      const errorData = error.response?.data;
+      errorMessage = errorData?.message ||
+        errorData?.error ||
         'Invalid input. Please check your entry.';
+      if (errorData?.suggestion) {
+        errorMessage += ` ${errorData.suggestion}`;
+      }
+    } else if (error?.response?.status === 422) {
+      // Unprocessable entity (e.g., no text content)
+      const errorData = error.response?.data;
+      errorMessage = errorData?.error || errorData?.details || 'Cannot process this content.';
+      if (errorData?.suggestion) {
+        errorMessage += ` ${errorData.suggestion}`;
+      }
     } else if (error?.response?.data?.message) {
       // Backend error message
       errorMessage = error.response.data.message;
     } else if (error?.response?.data?.error) {
       // Backend error
-      errorMessage = error.response.data.error;
+      const errorData = error.response.data;
+      errorMessage = errorData.error;
+      if (errorData.suggestion) {
+        errorMessage += ` ${errorData.suggestion}`;
+      }
     } else if (error?.message) {
       // Generic error
       errorMessage += error.message;
@@ -279,7 +293,7 @@ export default function ClaimInput() {
                 </p>
               )}
               <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                Supports articles, blog posts, and social media posts
+                Supports articles, blog posts, and social media posts with text content (Instagram captions, TikTok descriptions, tweets, etc.)
               </p>
             </div>
           </div>

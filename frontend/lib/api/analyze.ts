@@ -23,6 +23,8 @@ export interface AnalysisResult {
   byline?: string;
   excerpt?: string;
   content: string;
+  platform?: string; // 'instagram' | 'tiktok' | 'twitter' | 'facebook'
+  author?: string; // Social media author/username
   analysis: {
     summary: string;
     claims: AnalyzedClaim[];
