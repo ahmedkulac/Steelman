@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import HistoryButton from "@/components/HistoryButton";
+import AboutButton from "@/components/AboutButton";
 import { themeScript } from "./theme-script";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -40,7 +41,10 @@ export default function RootLayout({
         <ThemeProvider>
           <nav className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between">
             <HistoryButton />
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <AboutButton />
+              <ThemeToggle />
+            </div>
           </nav>
           {children}
         </ThemeProvider>

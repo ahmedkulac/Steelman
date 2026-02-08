@@ -200,7 +200,7 @@ export default function AnalyzePage() {
 
                                     <div className="space-y-4">
                                         {result.analysis.claims.map((claim, index) => (
-                                            <div key={index} className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-5 border-l-4 border-yellow-400 dark:border-yellow-400 border-y border-r border-gray-200 dark:border-gray-800">
+                                            <div key={index} className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-5 border-l-4 border-l-yellow-400 dark:border-l-yellow-400 border-y border-r border-gray-200 dark:border-gray-800">
                                                 <div className="mb-3">
                                                     <div className="flex items-center justify-between mb-1">
                                                         <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
