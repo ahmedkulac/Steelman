@@ -35,32 +35,6 @@ export default function ResultsPage() {
   const claimId = params.id as string;
 
   /**
-   * Effect hook for fetching claim and setting up polling
-   * 
-   * Polls every 3 seconds while claim is processing,
-   * stops when claim is completed or failed.
-   */
-  useEffect(() => {
-    // Initial fetch
-    fetchClaim();
-
-    // Set up polling interval if claim is still processing
-    let pollInterval: NodeJS.Timeout | null = null;
-    if (polling) {
-      pollInterval = setInterval(() => {
-        fetchClaim(false); // Don't show loading spinner on poll updates
-      }, 3000); // Poll every 3 seconds
-    }
-
-    // Cleanup interval on unmount
-    return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-    };
-  }, [claimId, polling, fetchClaim]);
-
-  /**
    * Fetch claim data from API
    * 
    * @param showLoading - Whether to show loading spinner (default: true)
@@ -90,10 +64,36 @@ export default function ResultsPage() {
     [claimId]
   );
 
+  /**
+   * Effect hook for fetching claim and setting up polling
+   * 
+   * Polls every 3 seconds while claim is processing,
+   * stops when claim is completed or failed.
+   */
+  useEffect(() => {
+    // Initial fetch
+    fetchClaim();
+
+    // Set up polling interval if claim is still processing
+    let pollInterval: NodeJS.Timeout | null = null;
+    if (polling) {
+      pollInterval = setInterval(() => {
+        fetchClaim(false); // Don't show loading spinner on poll updates
+      }, 3000); // Poll every 3 seconds
+    }
+
+    // Cleanup interval on unmount
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [claimId, polling, fetchClaim]);
+
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Loading results...</p>
@@ -105,7 +105,7 @@ export default function ResultsPage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <p className="text-red-800 dark:text-red-200 mb-4">{error}</p>
@@ -144,7 +144,7 @@ export default function ResultsPage() {
 
   // Success state - render results
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+    <main className="min-h-screen bg-white dark:bg-black py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <button
