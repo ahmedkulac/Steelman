@@ -113,47 +113,47 @@ function fixMissingCommas(jsonString: string): string {
   let inString = false;
   let escapeNext = false;
   let depth = 0; // Track nesting depth
-  
+
   for (let i = 0; i < jsonString.length; i++) {
     const char = jsonString[i];
-    
+
     if (escapeNext) {
       result += char;
       escapeNext = false;
       continue;
     }
-    
+
     if (char === '\\') {
       result += char;
       escapeNext = true;
       continue;
     }
-    
+
     if (char === '"') {
       inString = !inString;
       result += char;
       continue;
     }
-    
+
     if (!inString) {
       // Track depth
       if (char === '{' || char === '[') depth++;
       else if (char === '}' || char === ']') depth--;
-      
+
       // Check if we need to add a comma before this character
-      const needsCommaBefore = (char === '}' || char === ']' || char === '{' || char === '[' || 
-                                char === '"' || /\d/.test(char) || char === 't' || char === 'f' || char === 'n');
-      
+      const needsCommaBefore = (char === '}' || char === ']' || char === '{' || char === '[' ||
+        char === '"' || /\d/.test(char) || char === 't' || char === 'f' || char === 'n');
+
       if (needsCommaBefore && result.length > 0) {
         // Look backwards to find the end of the previous value
         let j = result.length - 1;
         // Skip whitespace
         while (j >= 0 && /\s/.test(result[j])) j--;
-        
+
         if (j >= 0) {
           const lastChar = result[j];
           let isValueEnd = false;
-          
+
           // Check if last character is end of a value
           if (lastChar === '"' || lastChar === '}' || lastChar === ']') {
             isValueEnd = true;
@@ -179,7 +179,7 @@ function fixMissingCommas(jsonString: string): string {
               }
               return false;
             };
-            
+
             if (checkTail(4, 'true') || checkTail(5, 'false') || checkTail(4, 'null')) {
               // Verify it's not part of a longer word by checking char before
               const beforeIdx = j - (checkTail(5, 'false') ? 4 : 3);
@@ -188,12 +188,12 @@ function fixMissingCommas(jsonString: string): string {
               }
             }
           }
-          
+
           if (isValueEnd) {
             // Check if there's already a comma before this value
             let k = j - 1;
             while (k >= 0 && /\s/.test(result[k])) k--;
-            
+
             // Add comma if we don't already have one and we're not at start of array/object or after colon
             if (k >= 0 && result[k] !== ',' && result[k] !== '[' && result[k] !== '{' && result[k] !== ':') {
               // Special case: don't add comma if we're closing and opening braces/brackets of same type
@@ -205,43 +205,43 @@ function fixMissingCommas(jsonString: string): string {
         }
       }
     }
-    
+
     result += char;
   }
-  
+
   // Strategy 2: Regex-based fix for common patterns (only outside strings)
   // This is a fallback for cases the character-by-character approach might miss
   let repaired = result;
   let passCount = 0;
   const maxPasses = 3;
-  
+
   while (passCount < maxPasses) {
     let changed = false;
     let newResult = '';
     inString = false;
     escapeNext = false;
-    
+
     for (let i = 0; i < repaired.length; i++) {
       const char = repaired[i];
-      
+
       if (escapeNext) {
         newResult += char;
         escapeNext = false;
         continue;
       }
-      
+
       if (char === '\\') {
         newResult += char;
         escapeNext = true;
         continue;
       }
-      
+
       if (char === '"') {
         inString = !inString;
         newResult += char;
         continue;
       }
-      
+
       if (!inString) {
         // Look for pattern: value whitespace value (missing comma)
         // Check if current char starts a value and previous ended a value
@@ -249,12 +249,12 @@ function fixMissingCommas(jsonString: string): string {
           // Look backwards through whitespace
           let j = i - 1;
           while (j >= 0 && /\s/.test(repaired[j])) j--;
-          
+
           if (j >= 0) {
             const prevChar = repaired[j];
             // If previous char ends a value and we don't have a comma
-            if ((prevChar === '"' || prevChar === '}' || prevChar === ']' || /\d/.test(prevChar)) && 
-                repaired.substring(Math.max(0, j - 4), j + 1).match(/(true|false|null)$/) === null) {
+            if ((prevChar === '"' || prevChar === '}' || prevChar === ']' || /\d/.test(prevChar)) &&
+              repaired.substring(Math.max(0, j - 4), j + 1).match(/(true|false|null)$/) === null) {
               // Check if comma already exists
               let k = j - 1;
               while (k >= 0 && /\s/.test(repaired[k])) k--;
@@ -266,15 +266,15 @@ function fixMissingCommas(jsonString: string): string {
           }
         }
       }
-      
+
       newResult += char;
     }
-    
+
     if (!changed) break;
     repaired = newResult;
     passCount++;
   }
-  
+
   return repaired;
 }
 
@@ -295,7 +295,7 @@ function repairJson(jsonString: string): string {
 
   // Remove trailing commas before closing braces/brackets
   repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
-  
+
   // Fix missing commas first (before other repairs that might change structure)
   repaired = fixMissingCommas(repaired);
 
@@ -836,13 +836,13 @@ export async function generateSteelmanArgument(
         const jsonToRepair = extractedJson || cleanedContent;
         let repairAttempts = 0;
         const maxRepairAttempts = 5;
-        
+
         // Try multiple repair strategies
         while (!parsed && repairAttempts < maxRepairAttempts) {
           repairAttempts++;
           try {
             let repaired = jsonToRepair;
-            
+
             // Apply repairs in sequence
             if (repairAttempts === 1) {
               // First attempt: standard repair
@@ -869,7 +869,7 @@ export async function generateSteelmanArgument(
                 repaired = repairJson(repaired);
               }
             }
-            
+
             parsed = JSON.parse(repaired);
             if (process.env.NODE_ENV === 'development') {
               console.log(`[AI Service] Successfully repaired JSON on attempt ${repairAttempts}`);
@@ -880,7 +880,7 @@ export async function generateSteelmanArgument(
             if (process.env.NODE_ENV === 'development') {
               console.warn(`[AI Service] Repair attempt ${repairAttempts} failed:`, repairErrorMessage);
             }
-            
+
             // If this was the last attempt, throw error
             if (repairAttempts >= maxRepairAttempts) {
               // Final fallback - provide helpful error message
@@ -922,11 +922,11 @@ export async function generateSteelmanArgument(
     // Validate and transform the response
     // Handle different response formats for robustness
     let counterArguments: CounterArgument[] = [];
-    
+
     // Handle array of counter-arguments
     if (Array.isArray(parsed.counterArguments)) {
       counterArguments = parsed.counterArguments;
-    } 
+    }
     // Handle single counter-argument object
     else if (parsed.argument || parsed.counterArgument) {
       counterArguments = [{
@@ -986,16 +986,16 @@ export async function generateSteelmanArgument(
       const counterArgumentSourcesPromises = response.counterArguments.map(async (arg) => {
         // Search for general sources for the counter-argument
         const generalSources = await searchCounterArgumentSources(arg.argument, request.claim);
-        
+
         // Search for sources for each evidence item
         const evidenceWithSources = await Promise.all(
           (arg.evidence || []).map(async (evidenceItem) => {
             // Handle both string and object evidence formats
             const evidenceText = typeof evidenceItem === 'string' ? evidenceItem : evidenceItem.text;
-            
+
             // Search for sources specific to this evidence item
             const evidenceSources = await searchCounterArgumentSources(evidenceText, request.claim);
-            
+
             // Return evidence item with sources
             if (typeof evidenceItem === 'string') {
               return {
@@ -1019,7 +1019,7 @@ export async function generateSteelmanArgument(
             }
           })
         );
-        
+
         return {
           generalSources: generalSources.map(source => ({
             title: source.title,
@@ -1270,6 +1270,7 @@ interface FactCheck {
   searchQuery: string; // Query to verify this fact
   verdict: 'verified' | 'disputed' | 'misleading' | 'needs_context'; // AI's initial assessment
   reasoning: string;
+  sources?: Array<{ title: string; url: string; snippet?: string }>;
 }
 
 export interface ArticleAnalysisResponse {
@@ -1512,12 +1513,12 @@ COMMON JSON ERRORS TO AVOID:
         const jsonToRepair = extractedJson || cleanedText;
         let repairAttempts = 0;
         const maxRepairAttempts = 5;
-        
+
         while (!parsed && repairAttempts < maxRepairAttempts) {
           repairAttempts++;
           try {
             let repaired = jsonToRepair;
-            
+
             // Apply repairs in sequence
             if (repairAttempts === 1) {
               repaired = repairJson(jsonToRepair);
@@ -1539,7 +1540,7 @@ COMMON JSON ERRORS TO AVOID:
                 repaired = repairJson(repaired);
               }
             }
-            
+
             parsed = JSON.parse(repaired);
             if (process.env.NODE_ENV === 'development') {
               console.log(`[AI Service] Successfully repaired article JSON on attempt ${repairAttempts}`);
@@ -1592,8 +1593,9 @@ COMMON JSON ERRORS TO AVOID:
       processingTime: Date.now() - startTime,
     };
 
-    // Search for sources for each counter-argument
+    // Search for sources for each counter-argument AND fact check
     try {
+      // 1. Sources for Counter-Arguments
       const claimsWithSourcesPromises = analysisResponse.claims.map(async (claim) => {
         // Search for sources supporting the counter-argument
         const sources = await searchCounterArgumentSources(claim.counterArgument, claim.claim);
@@ -1607,7 +1609,29 @@ COMMON JSON ERRORS TO AVOID:
         };
       });
 
-      analysisResponse.claims = await Promise.all(claimsWithSourcesPromises);
+      // 2. Sources for Fact Checks
+      const factChecksWithSourcesPromises = analysisResponse.factChecks.map(async (check) => {
+        // Search for sources verifying the statement using the search query
+        // We reuse searchCounterArgumentSources as a generic searcher
+        const query = check.searchQuery || `verify ${check.statement}`;
+        const sources = await searchCounterArgumentSources(query, check.statement);
+        return {
+          ...check,
+          sources: sources.map(s => ({
+            title: s.title,
+            url: s.url,
+            snippet: s.snippet
+          }))
+        };
+      });
+
+      const [claimsWithSources, factChecksWithSources] = await Promise.all([
+        Promise.all(claimsWithSourcesPromises),
+        Promise.all(factChecksWithSourcesPromises)
+      ]);
+
+      analysisResponse.claims = claimsWithSources;
+      analysisResponse.factChecks = factChecksWithSources;
     } catch (searchError) {
       console.warn('[AI Service] Error searching for sources for article analysis:', searchError);
       // Continue without sources

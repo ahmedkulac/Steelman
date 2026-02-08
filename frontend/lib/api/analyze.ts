@@ -30,6 +30,7 @@ export interface FactCheck {
   searchQuery: string;
   verdict: 'verified' | 'disputed' | 'misleading' | 'needs_context';
   reasoning: string;
+  sources?: Source[];
 }
 
 export interface AnalysisResult {
