@@ -30,7 +30,7 @@ export default function HistoryButton() {
         className="group relative px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-95"
         aria-label="Open history"
       >
-        <div className="flex items-center gap-2 relative">
+        <div className="flex items-center gap-2">
           <svg
             className="w-5 h-5 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-3"
             fill="none"
@@ -45,10 +45,9 @@ export default function HistoryButton() {
             />
           </svg>
           <span className="hidden sm:inline">History</span>
-          
-          {/* Count badge */}
+          {/* Count badge - positioned on the right */}
           {cacheCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded-full animate-[zoomIn_0.2s_ease-out]">
+            <span className="flex items-center justify-center min-w-[1.25rem] h-5 px-1 text-xs font-bold text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded-full animate-[zoomIn_0.2s_ease-out]">
               {cacheCount > 99 ? '99+' : cacheCount}
             </span>
           )}

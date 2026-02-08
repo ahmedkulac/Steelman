@@ -56,7 +56,7 @@ type UrlFormData = z.infer<typeof urlSchema>;
  */
 export default function ClaimInput() {
   const router = useRouter();
-  const [mode, setMode] = useState<InputMode>('claim');
+  const [mode, setMode] = useState<InputMode>('url');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -182,25 +182,6 @@ export default function ClaimInput() {
         <button
           type="button"
           onClick={() => {
-            setMode('claim');
-            setError(null);
-            claimForm.reset();
-            urlForm.reset();
-          }}
-          className={`relative flex-1 py-3 px-4 text-sm font-semibold uppercase tracking-wider transition-all duration-300 ease-out ${
-            mode === 'claim'
-              ? 'text-gray-900 dark:text-gray-100'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-          }`}
-        >
-          <span className="relative z-10">Claim</span>
-          {mode === 'claim' && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 animate-slide-in" />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
             setMode('url');
             setError(null);
             claimForm.reset();
@@ -214,6 +195,25 @@ export default function ClaimInput() {
         >
           <span className="relative z-10">URL</span>
           {mode === 'url' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 animate-slide-in" />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMode('claim');
+            setError(null);
+            claimForm.reset();
+            urlForm.reset();
+          }}
+          className={`relative flex-1 py-3 px-4 text-sm font-semibold uppercase tracking-wider transition-all duration-300 ease-out ${
+            mode === 'claim'
+              ? 'text-gray-900 dark:text-gray-100'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          <span className="relative z-10">Claim</span>
+          {mode === 'claim' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 animate-slide-in" />
           )}
         </button>
@@ -302,16 +302,18 @@ export default function ClaimInput() {
       {mode === 'url' && (
         <form onSubmit={urlForm.handleSubmit(onSubmitUrl)} className="space-y-6">
           <div className="relative">
-            <input
-              type="url"
-              id="url-input"
-              aria-label="Enter article or social media post URL"
-              {...urlForm.register('input')}
-              className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:border-gray-900 dark:focus:border-gray-100 focus:outline-none transition-all duration-300 ease-out text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:scale-[1.01] focus:shadow-sm peer"
-              placeholder="https://example.com/article or https://twitter.com/user/status/123"
-              disabled={isSubmitting}
-            />
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 transform scale-x-0 transition-transform duration-300 origin-left peer-focus:scale-x-100" />
+            <div className="relative">
+              <input
+                type="url"
+                id="url-input"
+                aria-label="Enter article or social media post URL"
+                {...urlForm.register('input')}
+                className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:border-gray-900 dark:focus:border-gray-100 focus:outline-none transition-all duration-300 ease-out text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:scale-[1.01] focus:shadow-sm peer"
+                placeholder="https://example.com/article or https://twitter.com/user/status/123"
+                disabled={isSubmitting}
+              />
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 transform scale-x-0 transition-transform duration-300 origin-left peer-focus:scale-x-100" />
+            </div>
             <div className="mt-1">
               {urlForm.formState.errors.input && (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
