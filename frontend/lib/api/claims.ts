@@ -7,9 +7,14 @@
  * - Retrieving claim results
  * - Listing claims with pagination
  * - Submitting feedback
+ * 
+ * Features:
+ * - Client-side caching for instant results
+ * - Automatic cache invalidation
  */
 
 import api from '../api';
+import { getCachedClaim, setCachedClaim } from '../cache';
 
 /**
  * Counter-argument structure from API
@@ -78,25 +83,52 @@ export interface FeedbackRequest {
 /**
  * Submit a new claim for fact-checking
  * 
+ * Checks cache first, then makes API call if needed.
+ * Caches completed results automatically.
+ * 
  * @param data - Claim data (text, category, context)
  * @returns Promise resolving to claim response with ID
  */
 export async function createClaim(
   data: CreateClaimRequest
 ): Promise<CreateClaimResponse> {
+  // Check cache first
+  const cached = getCachedClaim<CreateClaimResponse>(data.claim);
+  if (cached && cached.processingStatus === 'completed') {
+    return { ...cached, cached: true };
+  }
+
+  // Make API call
   const response = await api.post<CreateClaimResponse>('/claims', data);
-  return response.data;
+  const result = response.data;
+
+  // Cache completed results
+  if (result.processingStatus === 'completed' && result.steelmanArguments) {
+    setCachedClaim(data.claim, result);
+  }
+
+  return result;
 }
 
 /**
  * Get a specific claim by ID
+ * 
+ * Note: This doesn't use cache since we need the ID.
+ * Cache is used in createClaim() for claim text lookups.
  * 
  * @param id - Claim ID
  * @returns Promise resolving to claim with results
  */
 export async function getClaim(id: string): Promise<Claim> {
   const response = await api.get<Claim>(`/claims/${id}`);
-  return response.data;
+  const result = response.data;
+  
+  // Cache completed results by content for future lookups
+  if (result.processingStatus === 'completed' && result.content) {
+    setCachedClaim(result.content, result);
+  }
+  
+  return result;
 }
 
 /**

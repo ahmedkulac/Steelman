@@ -7,7 +7,7 @@ A hybrid web application (mobile-optimized) that helps users fact-check claims b
 - **AI-Powered Fact-Checking**: Uses Google Gemini AI to generate steelman counter-arguments
 - **Mobile-First Design**: Optimized for mobile devices with responsive UI
 - **Real-Time Processing**: Asynchronous AI processing with status updates
-- **Caching**: Redis caching for identical claims (optional)
+- **Multi-Tier Caching**: Redis + in-memory backend cache + frontend localStorage cache
 - **Rate Limiting**: Protects API usage and prevents abuse
 - **Free Tier Optimized**: Configured for Google Gemini free tier
 

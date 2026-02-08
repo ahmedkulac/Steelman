@@ -2,6 +2,8 @@
 
 This guide covers deploying your hackathon project to various platforms.
 
+**👉 For free deployment options, see [FREE_DEPLOYMENT_GUIDE.md](./FREE_DEPLOYMENT_GUIDE.md)**
+
 ## Prerequisites
 
 - Docker installed (for containerized deployment)

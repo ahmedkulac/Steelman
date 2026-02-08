@@ -67,11 +67,15 @@ app.get('/', (req, res) => {
  * Health check endpoint
  * GET /health
  */
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
+  const { getCacheStats } = await import('./utils/cache');
+  const cacheStats = getCacheStats();
+  
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    cache: cacheStats,
   });
 });
 
