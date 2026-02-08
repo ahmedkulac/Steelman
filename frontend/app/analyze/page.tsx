@@ -104,9 +104,9 @@ export default function AnalyzePage() {
             cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
             // Add momentary flash effect
-            cardEl.classList.add('ring-4', highlight.type === 'claim' ? 'ring-yellow-400' : 'ring-blue-400');
+            cardEl.classList.add('ring-4', highlight.type === 'claim' ? 'ring-yellow-400' : 'ring-green-400');
             setTimeout(() => {
-                cardEl.classList.remove('ring-4', 'ring-yellow-400', 'ring-blue-400');
+                cardEl.classList.remove('ring-4', 'ring-yellow-400', 'ring-green-400');
             }, 1500);
         }
 
@@ -252,19 +252,20 @@ export default function AnalyzePage() {
                             let bgClass = '';
                             if (h.type === 'claim') {
                                 bgClass = isActive
-                                    ? 'bg-yellow-300 dark:bg-yellow-600 text-black font-medium ring-2 ring-yellow-500/50'
-                                    : 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-200 dark:hover:bg-yellow-800 text-slate-900 dark:text-slate-100';
+                                    ? 'bg-yellow-300 dark:bg-yellow-600 text-black font-medium ring-2 ring-yellow-500/50 shadow-md transform scale-[1.02]'
+                                    : 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-200 dark:hover:bg-yellow-800 text-slate-900 dark:text-slate-100 shadow-sm hover:shadow active:scale-95 border-b-2 border-yellow-300 dark:border-yellow-700';
                             } else {
+                                // Green for Fact Checks
                                 bgClass = isActive
-                                    ? 'bg-blue-300 dark:bg-blue-600 text-black font-medium ring-2 ring-blue-500/50'
-                                    : 'bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800 text-slate-900 dark:text-slate-100';
+                                    ? 'bg-green-300 dark:bg-green-600 text-black font-medium ring-2 ring-green-500/50 shadow-md transform scale-[1.02]'
+                                    : 'bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800 text-slate-900 dark:text-slate-100 shadow-sm hover:shadow active:scale-95 border-b-2 border-green-300 dark:border-green-700';
                             }
 
                             pContent.push(
                                 <span
                                     key={`highlight-${h.type}-${h.index}-${hIdx}`}
                                     id={`highlight-${h.type}-${h.index}`}
-                                    className={`cursor-pointer transition-all duration-200 px-1 rounded mx-0.5 ${bgClass}`}
+                                    className={`cursor-pointer transition-all duration-200 px-1.5 py-0.5 rounded mx-0.5 inline-block ${bgClass}`}
                                     onClick={() => scrollToHighlight(h)}
                                     title={h.type === 'claim' ? "View Counter-Argument" : "View Fact Check"}
                                 >
@@ -424,8 +425,8 @@ export default function AnalyzePage() {
                                                         key={index}
                                                         ref={(el) => { if (el) cardRefs.current.set(`fact-${index}`, el); }}
                                                         className={`rounded-lg p-4 border transition-all duration-300 ${isActive
-                                                                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 ring-2 ring-blue-400/50'
-                                                                : 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800'
+                                                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 ring-2 ring-blue-400/50'
+                                                            : 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800'
                                                             }`}
                                                     >
                                                         <p className="text-xs font-bold uppercase tracking-wide mb-1 text-slate-500 dark:text-slate-400">
@@ -433,9 +434,9 @@ export default function AnalyzePage() {
                                                         </p>
                                                         <div className="flex items-center gap-2 mb-2">
                                                             <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${check.verdict === 'verified' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                                                                    check.verdict === 'disputed' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
-                                                                        check.verdict === 'misleading' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
-                                                                            'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                                                                check.verdict === 'disputed' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                                                                    check.verdict === 'misleading' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
+                                                                        'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
                                                                 }`}>
                                                                 {check.verdict.replace('_', ' ')}
                                                             </span>
@@ -470,8 +471,8 @@ export default function AnalyzePage() {
                                                     key={index}
                                                     ref={(el) => { if (el) cardRefs.current.set(`claim-${index}`, el); }}
                                                     className={`rounded-lg shadow-md p-5 border-l-4 transition-all duration-300 ${isActive
-                                                            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-yellow-600 ring-2 ring-yellow-400/50'
-                                                            : 'bg-white dark:bg-gray-900 border-l-yellow-400 dark:border-l-yellow-400 border-y border-r border-gray-200 dark:border-gray-800'
+                                                        ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-yellow-600 ring-2 ring-yellow-400/50'
+                                                        : 'bg-white dark:bg-gray-900 border-l-yellow-400 dark:border-l-yellow-400 border-y border-r border-gray-200 dark:border-gray-800'
                                                         }`}
                                                 >
                                                     <div className="mb-3">
