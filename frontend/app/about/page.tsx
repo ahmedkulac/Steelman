@@ -22,6 +22,24 @@ export default function AboutPage() {
           </p>
         </div>
 
+        {/* Important Note */}
+        <section className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 md:p-8 border border-blue-200 dark:border-blue-800">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            Important Disclaimer
+          </h2>
+          <div className="space-y-4 text-gray-700 dark:text-gray-300">
+            <p>
+              <strong className="text-gray-900 dark:text-gray-100">This application is designed for critical thinking and educational purposes.</strong> The AI-generated counter-arguments are tools to help you evaluate claims, but they should not be considered definitive truth.
+            </p>
+            <p>
+              Always verify information independently, consult multiple sources, and use your own judgment. The goal is to think more critically, not to replace your own reasoning with AI-generated content.
+            </p>
+            <p className="text-sm italic">
+              Designed for critical thinking. Verify all information.
+            </p>
+          </div>
+        </section>
+
         {/* What is Steelman */}
         <section className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 md:p-8 border border-gray-200 dark:border-gray-800">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
@@ -104,24 +122,6 @@ export default function AboutPage() {
               <li><strong className="text-gray-900 dark:text-gray-100">Foster intellectual honesty:</strong> Acknowledge when arguments have merit, even if we disagree</li>
               <li><strong className="text-gray-900 dark:text-gray-100">Engage constructively:</strong> Have more productive conversations by addressing the strongest points</li>
             </ul>
-          </div>
-        </section>
-
-        {/* Important Note */}
-        <section className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 md:p-8 border border-blue-200 dark:border-blue-800">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            Important Disclaimer
-          </h2>
-          <div className="space-y-4 text-gray-700 dark:text-gray-300">
-            <p>
-              <strong className="text-gray-900 dark:text-gray-100">This application is designed for critical thinking and educational purposes.</strong> The AI-generated counter-arguments are tools to help you evaluate claims, but they should not be considered definitive truth.
-            </p>
-            <p>
-              Always verify information independently, consult multiple sources, and use your own judgment. The goal is to think more critically, not to replace your own reasoning with AI-generated content.
-            </p>
-            <p className="text-sm italic">
-              Designed for critical thinking. Verify all information.
-            </p>
           </div>
         </section>
 

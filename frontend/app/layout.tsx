@@ -17,6 +17,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Steelman - Article Analysis",
   description: "Get AI-powered steelman counter-arguments to help you critically evaluate claims",
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 /**

@@ -11,6 +11,9 @@
 
 'use client';
 
+// Force dynamic rendering - this route should never be statically generated
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getClaim, Claim } from '@/lib/api/claims';
