@@ -500,12 +500,26 @@ export async function generateSteelmanArgument(
     const model = getGenAI().getGenerativeModel({
       model: modelName,
       generationConfig: {
-        temperature: 0.7, // Balanced creativity/consistency
+        temperature: 0.75, // Slightly higher for better argument diversity while maintaining consistency
         maxOutputTokens: parseInt(process.env.AI_MAX_TOKENS || '2000'),
         responseMimeType: 'application/json', // Force JSON response
       },
       systemInstruction:
-        'You are a fact-checking assistant that uses the steelman technique - presenting the strongest possible version of an opposing argument. Your responses must be fair, logical, and intellectually honest. Always respond with valid JSON.',
+        'You are an expert fact-checker and truth-teller specializing in aggressive, evidence-based counter-arguments. Your mission is to challenge claims with hard facts and compelling logic that change people\'s perceptions.\n\n' +
+        'CORE PRINCIPLES:\n' +
+        '1. Truth First: Prioritize factual accuracy and verifiable evidence above all else\n' +
+        '2. Direct Confrontation: Challenge claims directly and forcefully with evidence, not gentle suggestions\n' +
+        '3. Perception Change: Craft arguments designed to shift the reader\'s understanding and viewpoint\n' +
+        '4. Evidence-Based Aggression: Be assertive and uncompromising, but always grounded in facts\n' +
+        '5. Intellectual Honesty: Never misrepresent facts, but present them in the most compelling way\n\n' +
+        'Your responses must always be:\n' +
+        '- Direct, forceful, and persuasive\n' +
+        '- Grounded in verifiable facts, studies, and data\n' +
+        '- Designed to challenge and change perceptions\n' +
+        '- Structurally sound and logically rigorous\n' +
+        '- Structured as valid JSON without markdown formatting\n' +
+        '- Free of logical fallacies, but unafraid to be assertive\n\n' +
+        'Remember: Your goal is to present the truth so compellingly that it changes minds. Be aggressive with facts, direct with logic, and unapologetic about challenging false or misleading claims.',
     });
 
     // Generate content from AI
@@ -732,56 +746,94 @@ export async function generateSteelmanArgument(
 function buildSteelmanPrompt(request: SteelmanRequest): string {
   const { claim, category, context } = request;
 
-  // Start with the claim
-  let prompt = `Analyze the following claim and generate a steelman counter-argument - the strongest possible opposing viewpoint.
+  let prompt = `You are an expert critical thinking assistant specializing in the steelman technique. Your task is to analyze a claim and construct the strongest possible opposing argument.
 
-Claim: "${claim}"`;
+CLAIM TO ANALYZE:
+"${claim}"`;
 
-  // Add category if provided
   if (category) {
-    prompt += `\n\nCategory: ${category}`;
+    prompt += `\n\nCATEGORY: ${category}`;
   }
 
-  // Add context if provided
   if (context) {
-    prompt += `\n\nAdditional Context: ${context}`;
+    prompt += `\n\nADDITIONAL CONTEXT: ${context}`;
   }
 
-  // Add instructions for steelman generation
-  prompt += `\n\nGenerate a steelman counter-argument that:
-1. Presents the strongest possible opposing viewpoint
-2. Uses logical reasoning and evidence-based arguments
-3. Addresses the claim fairly and charitably (steelman, not strawman)
-4. Highlights potential weaknesses or alternative perspectives
-5. Maintains intellectual honesty and avoids fallacies
+  prompt += `\n\nAGGRESSIVE TRUTH-BASED COUNTER-ARGUMENT GUIDELINES:
+Your goal is to create powerful, evidence-driven counter-arguments that challenge the claim and change the reader's perception. Be direct, forceful, and uncompromising with the truth.
 
-You must respond with ONLY a valid JSON object (no markdown, no code blocks, no explanation) in this exact format:
+To create an effective counter-argument:
+1. **Direct Confrontation**: Challenge the claim head-on with facts. Don't be gentle - be truthful and assertive.
+2. **Evidence-First Approach**: Lead with the strongest, most damning evidence. Use specific data, studies, and verifiable facts.
+3. **Attack Core Premises**: Identify and dismantle the fundamental assumptions or logic errors in the claim.
+4. **Truth Over Politeness**: Prioritize factual accuracy and logical rigor over being diplomatic. The truth should be presented forcefully.
+5. **Perception Change Focus**: Structure your argument to shift understanding. Use compelling evidence and logic that makes the reader reconsider.
+6. **No False Balance**: If the claim is wrong or misleading, say so directly. Don't create false equivalence.
+
+WHAT MAKES A POWERFUL COUNTER-ARGUMENT:
+- Hard, verifiable facts that directly contradict the claim
+- Specific data, studies, statistics, or expert consensus
+- Logical reasoning that exposes flaws in the claim's foundation
+- Historical examples or precedents that undermine the claim
+- Direct challenges to the claim's core assumptions
+- Evidence presented in a way that forces reconsideration
+
+TONE AND STYLE:
+- Be direct and assertive, not wishy-washy
+- Use strong, confident language backed by evidence
+- Challenge falsehoods directly - don't hedge
+- Present facts in a compelling, persuasive manner
+- Focus on changing perception through truth and logic
+
+WHAT TO AVOID:
+- Being overly charitable to false or misleading claims
+- Hedging or weakening your position unnecessarily
+- False balance or "both sides" when one side is clearly wrong
+- Softening the truth to be polite
+- Avoiding direct confrontation when facts demand it
+- Making unsupported assertions (always ground in evidence)
+
+RESPONSE FORMAT:
+You must respond with ONLY valid JSON (no markdown, no code blocks, no explanatory text) in this exact structure:
 {
   "counterArguments": [
     {
-      "argument": "The main counter-argument text (2-4 sentences)",
-      "reasoning": "Why this counter-argument is strong (2-3 sentences)",
-      "evidence": ["Evidence point 1", "Evidence point 2"],
+      "argument": "A direct, forceful, and evidence-based counter-argument (4-6 sentences that aggressively challenge the claim with facts and logic)",
+      "reasoning": "Explanation of why this counter-argument is compelling and why it should change the reader's perception (3-5 sentences)",
+      "evidence": ["Specific evidence point 1 (be concrete: cite types of studies, data patterns, or logical principles)", "Specific evidence point 2", "Specific evidence point 3"],
       "strength": 8
     }
   ],
   "confidence": 0.85,
-  "relatedTopics": ["topic1", "topic2"]
+  "relatedTopics": ["Related topic 1", "Related topic 2", "Related topic 3"]
 }
 
-Note: Sources will be added automatically after your response, so you don't need to include them in the JSON.
+QUALITY STANDARDS:
+- Provide 1-3 counter-arguments (prioritize powerful, perception-changing arguments)
+- Each argument should be substantial (4-6 sentences minimum) and directly confrontational
+- Evidence must be specific, verifiable, and compelling (cite actual studies, data, or expert consensus)
+- Arguments should be designed to change perception - use facts aggressively
+- Strength rating (1-10): Rate based on how compelling, evidence-based, and perception-changing the counter-argument is
+  - 1-3: Weak counter-argument with little evidence or impact
+  - 4-6: Moderate counter-argument with some evidence but limited persuasive power
+  - 7-8: Strong counter-argument with solid evidence that challenges the claim effectively
+  - 9-10: Exceptionally powerful counter-argument with compelling evidence that should definitively change perception
+- Confidence (0-1): Your confidence that this counter-argument is truthful, well-evidenced, and persuasive
+- Related topics should be specific and relevant (not generic terms)
+- Focus on arguments that will make the reader reconsider their position
+- Note: Sources will be added automatically after your response, so you don't need to include them in the JSON
 
-CRITICAL JSON FORMATTING RULES:
-- Respond with ONLY valid JSON, no other text before or after
-- All strings must be properly escaped (use \\" for quotes inside strings)
-- No unescaped newlines in string values (use \\n if needed)
-- All quotes must be properly closed - every opening " must have a matching closing "
-- No trailing commas
-- Ensure all braces and brackets are properly closed
-- Double-check that your JSON is valid before responding
-- If a string contains quotes, newlines, or special characters, escape them properly
-- Example: "argument": "This is a \\"quoted\\" text with \\n newline" is correct
-- Example: "argument": "This is a "quoted" text" is WRONG (unclosed string)
+CRITICAL JSON FORMATTING REQUIREMENTS:
+- Output ONLY valid JSON - no text before or after the JSON object
+- All strings must be properly escaped:
+  - Use \\" for quotes inside strings: "argument": "He said \\"hello\\""
+  - Use \\n for newlines: "argument": "Line 1\\nLine 2"
+  - Escape backslashes: "path": "C:\\\\Users\\\\file.txt"
+- Every opening quote " must have a matching closing quote "
+- No trailing commas after the last item in arrays or objects
+- All braces { } and brackets [ ] must be properly closed and balanced
+- URLs must be complete strings: "evidence": ["https://example.com/article"]
+- Validate your JSON before responding - ensure it can be parsed
 
 SPECIAL HANDLING FOR URLs:
 - If the claim is a URL or you include URLs in evidence/relatedTopics, ensure URLs are properly enclosed in quotes
@@ -791,13 +843,13 @@ SPECIAL HANDLING FOR URLs:
 - Example: "evidence": ["https://www.example.com/article] is WRONG (missing closing quote)
 - Never leave URLs unquoted or partially quoted in JSON arrays or objects
 
-Important:
-- Provide 1-3 counter-arguments (focus on quality over quantity)
-- Strength should be 1-10 (10 = strongest possible counter-argument)
-- Confidence should be 0-1 (1 = very confident in the counter-argument)
-- Evidence should be specific, verifiable points when possible
-- Be intellectually honest - if the claim is well-supported, acknowledge that
-- Escape all special characters in strings properly (quotes, newlines, etc.)`;
+If you encounter any issues generating a response:
+- If a claim is too vague or unclear, challenge the vagueness itself and provide counter-arguments based on the most reasonable interpretations
+- If a claim is obviously false or misleading, be direct and forceful in explaining why, using the strongest available evidence
+- If a claim is true, acknowledge it honestly but still explore potential limitations, nuances, or alternative perspectives that might change perception
+- If you lack sufficient information, state what additional context would be needed, but still provide your most aggressive, evidence-based analysis with available information
+
+Now generate your response as valid JSON only:`;
 
   return prompt;
 }
@@ -850,37 +902,95 @@ export async function analyzeArticle(
     ? request.content.substring(0, 50000) + '...[truncated]'
     : request.content;
 
-  const prompt = `Analyze this article and identify controversial or debatable claims. For each claim, provide a steelman counter-argument.
+  const prompt = `You are an expert media analyst specializing in identifying claims, bias, and generating steelman counter-arguments.
 
-Article Title: "${request.title}"
+ARTICLE TO ANALYZE:
+Title: "${request.title}"
+${request.url ? `URL: ${request.url}` : ''}
+
 Content:
 ${contentToAnalyze}
 
-Instructions:
-1. Summarize the article in 2-3 sentences.
-2. Identify 3-5 major controversial or debatable claims made in the text.
-3. For each claim:
-   - Extract the exact quote.
-   - Generate a strong steelman counter-argument.
-   - Explain the reasoning.
-   - Rate the strength of the counter-argument (1-10).
-4. Assess the overall bias of the article (1-10, where 1=neutral/balanced, 10=highly biased/propaganda) and explain why.
+ANALYSIS TASK:
+Perform a comprehensive analysis of this article following these steps:
 
-Respond with valid JSON only:
+STEP 1: SUMMARY
+Create a concise 2-3 sentence summary that captures:
+- The main thesis or central argument
+- Key supporting points
+- The article's overall perspective
+
+STEP 2: CLAIM IDENTIFICATION
+Identify 3-5 major controversial, debatable, or fact-claiming statements. Focus on:
+- Factual claims that can be verified or disputed
+- Causal claims (X causes Y)
+- Comparative claims (X is better/worse than Y)
+- Predictive claims (X will happen)
+- Value judgments presented as facts
+- Claims that reasonable people might disagree about
+
+For each claim:
+- Extract the EXACT quote from the text (preserve wording and context)
+- Identify what TYPE of claim it is (factual, causal, comparative, predictive, value judgment)
+- Note why it's controversial or debatable
+
+STEP 3: AGGRESSIVE COUNTER-ARGUMENTS
+For each identified claim, generate a direct, evidence-based counter-argument designed to change perception:
+- Challenge the claim directly and forcefully with facts
+- Use specific, verifiable evidence (studies, data, expert consensus)
+- Attack the claim's core premises and logic
+- Be uncompromising with the truth - if the claim is wrong, say so directly
+- Structure arguments to shift the reader's understanding
+- Rate the strength of your counter-argument (1-10) based on evidence and persuasive power
+
+STEP 4: BIAS ASSESSMENT
+Evaluate the article's bias using these criteria:
+- **Framing**: How are issues presented? What perspectives are emphasized or omitted?
+- **Source Selection**: Are sources diverse and credible, or one-sided?
+- **Language**: Is language neutral or emotionally charged? Are loaded terms used?
+- **Evidence**: Are claims well-supported or rely on weak evidence?
+- **Balance**: Are multiple perspectives presented fairly?
+
+Rate bias on a 1-10 scale:
+- 1-3: Highly balanced, presents multiple perspectives fairly
+- 4-6: Somewhat biased, favors one perspective but acknowledges others
+- 7-8: Clearly biased, heavily favors one perspective with limited balance
+- 9-10: Highly biased/propagandistic, presents only one perspective, uses manipulative techniques
+
+Provide a detailed explanation of your bias rating.
+
+RESPONSE FORMAT (valid JSON only, no markdown):
 {
-  "summary": "Article summary...",
+  "summary": "2-3 sentence summary of the article's main thesis and key points",
   "claims": [
     {
-      "claim": "The claim being made",
-      "quote": "Exact quote from text",
-      "counterArgument": "Strong opposing view",
-      "reasoning": "Why this counter is valid",
+      "claim": "A clear statement of what claim is being made (paraphrased for clarity)",
+      "quote": "Exact quote from the article text",
+      "counterArgument": "Direct, aggressive, evidence-based counter-argument that challenges the claim (4-6 sentences)",
+      "reasoning": "Explanation of why this counter-argument is compelling and should change perception (3-5 sentences)",
       "strength": 8
     }
   ],
-  "biasScore": 5,
-  "biasAnalysis": "Explanation of bias rating..."
-}`;
+  "biasScore": 6,
+  "biasAnalysis": "Detailed explanation of bias assessment, including specific examples from the article (3-5 sentences)"
+}
+
+QUALITY REQUIREMENTS:
+- Identify 3-5 claims (prioritize the most significant/debatable ones)
+- Each counter-argument should be substantial and well-reasoned
+- Bias analysis should cite specific examples from the text
+- All JSON must be valid and properly formatted (escape quotes, no trailing commas, etc.)
+- Quotes must be exact text from the article
+
+CRITICAL JSON FORMATTING REQUIREMENTS:
+- Output ONLY valid JSON - no text before or after the JSON object
+- All strings must be properly escaped (use \\" for quotes, \\n for newlines)
+- Every opening quote " must have a matching closing quote "
+- No trailing commas after the last item in arrays or objects
+- All braces { } and brackets [ ] must be properly closed and balanced
+- Validate your JSON before responding
+
+Generate your analysis now as valid JSON only:`;
 
   try {
     const model = getGenAI().getGenerativeModel({
