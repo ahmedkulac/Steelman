@@ -275,10 +275,10 @@ router.post('/', async (req: Request, res: Response) => {
                 if (!content || content.trim().length < 50) {
                     return res.status(422).json({
                         error: 'Insufficient article content extracted',
-                        details: hasPaywall
+                        details: detectedPaywall
                             ? 'This article appears to be behind a paywall.'
                             : 'Could not extract enough content from the article.',
-                        suggestion: hasPaywall
+                        suggestion: detectedPaywall
                             ? 'Please try a publicly accessible article, or copy and paste the article text directly as a claim instead.'
                             : 'Please check the URL and ensure the article is publicly accessible.',
                     });

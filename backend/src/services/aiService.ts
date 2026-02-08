@@ -119,50 +119,46 @@ function repairJson(jsonString: string): string {
     }
 
     if (char === '"') {
-      inString = !inString;
+      // Check if it's an escaped quote that wasn't properly escaped
+      // e.g. "Some "quote" text" -> "Some \"quote\" text"
+      // Heuristic: if we are inside a string, and the next char is NOT a comma, closing brace, or closing bracket,
+      // and the previous char was not an escape, then this might be an inner quote that needs escaping.
+      // However, we also need to detect the END of the string.
+      // Typically the end of a string is followed by: , } ] or :
+
+      if (inString) {
+        // Look ahead to see if this looks like a valid string terminator
+        let isTerminator = false;
+        let j = i + 1;
+        while (j < repaired.length && /\s/.test(repaired[j])) j++;
+
+        if (j < repaired.length) {
+          const nextNonSpace = repaired[j];
+          if (nextNonSpace === ',' || nextNonSpace === '}' || nextNonSpace === ']' || nextNonSpace === ':') {
+            isTerminator = true;
+          }
+        }
+
+        if (isTerminator) {
+          inString = false;
+        } else {
+          // It's likely an unescaped quote inside the string
+          result += '\\"';
+          continue;
+        }
+      } else {
+        inString = true;
+      }
+
       result += char;
       continue;
     }
 
-    // If we're in a string and encounter structural characters, close the string
-    // This handles unterminated strings that extend beyond where they should
     if (inString) {
-      // Check if we're hitting a structural character that indicates end of string value
-      if (char === '\n' || char === '\r') {
-        // Unescaped newline - close the string
-        result += '"';
-        inString = false;
-        continue; // Skip the newline as it's not valid in JSON strings
-      }
-
-      // If we see a colon, comma, brace, or bracket after whitespace, we might need to close
-      // But be careful - these could be inside the string content
-      // Only close if we see a pattern like: "text : or "text , or "text }
-      if (i > 0) {
-        const prevChar = repaired[i - 1];
-        // If previous char is a quote (we just closed), don't do anything
-        if (prevChar === '"') {
-          // Already handled
-        } else if ((char === ':' || char === ',' || char === '}' || char === ']') &&
-          /\s/.test(prevChar)) {
-          // We have whitespace followed by structural char - likely end of string
-          // Look backwards to find if we're still in a string that should be closed
-          let lookBack = i - 1;
-          let foundQuote = false;
-          while (lookBack >= 0 && /\s/.test(repaired[lookBack])) {
-            lookBack--;
-          }
-          if (lookBack >= 0 && repaired[lookBack] === '"') {
-            // Found a quote, check if we're between quotes
-            // This is complex, so let's use a simpler heuristic
-            // If we're in a string and hit these chars after non-whitespace, close it
-            result += '"';
-            inString = false;
-            result += char;
-            continue;
-          }
-        }
-      }
+      // Handle unescaped control characters
+      if (char === '\n') { result += '\\n'; continue; }
+      if (char === '\r') { continue; } // Ignore CR
+      if (char === '\t') { result += '\\t'; continue; }
     }
 
     result += char;
@@ -686,7 +682,7 @@ export async function generateSteelmanArgument(
       });
 
       const counterArgumentSources = await Promise.all(counterArgumentSourcesPromises);
-      
+
       // Add sources to each counter-argument
       response.counterArguments = response.counterArguments.map((arg, index) => ({
         ...arg,
