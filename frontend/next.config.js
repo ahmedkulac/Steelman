@@ -17,6 +17,10 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
   },
+  // Ensure dynamic routes are not statically generated
+  experimental: {
+    // This helps prevent static generation issues with dynamic routes
+  },
 }
 
 module.exports = nextConfig

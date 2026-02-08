@@ -1,3 +1,15 @@
+/**
+ * HistoryButton Component
+ * 
+ * Button component that provides quick access to claim history.
+ * Features:
+ * - Shows cached claim count badge
+ * - Quick access dropdown with recent claims
+ * - Keyboard shortcut (Ctrl/Cmd + H)
+ * - Opens full history sidebar on double-click
+ * - Hydration-safe: avoids localStorage access during SSR
+ */
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -14,35 +26,91 @@ interface CachedClaimEntry {
 }
 
 export default function HistoryButton() {
+  // ===== State Management =====
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  /**
+   * Initialize with empty state to ensure server/client hydration match.
+   * localStorage is only accessed in useEffect (client-side only).
+   * This prevents hydration errors where server renders empty state
+   * but client renders with cached data.
+   */
   const [cacheCount, setCacheCount] = useState(0);
   const [recentClaims, setRecentClaims] = useState<CachedClaimEntry[]>([]);
+  
+  // Refs for dropdown and button elements (for click-outside detection)
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
+  // ===== Effects =====
+  
+  /**
+   * Load cached data and set up real-time updates.
+   * 
+   * This effect:
+   * 1. Loads cache stats and recent claims on mount (client-side only)
+   * 2. Listens for storage events (cross-tab updates)
+   * 3. Listens for custom cacheUpdated events (same-tab updates)
+   * 4. Polls periodically as a fallback
+   * 
+   * Note: Runs after component mounts to avoid hydration mismatches.
+   */
   useEffect(() => {
+    /**
+     * Update cache count and recent claims from localStorage
+     */
     const updateCount = () => {
-      const stats = getCacheStats();
-      setCacheCount(stats.entries);
-      
-      // Load recent claims for dropdown
-      const claims = getAllCachedClaims<Claim>();
-      // Sort by most recent and take top 5
-      const sorted = claims.sort((a, b) => b.cachedAt - a.cachedAt).slice(0, 5);
-      setRecentClaims(sorted);
+      try {
+        const stats = getCacheStats();
+        setCacheCount(stats.entries);
+        
+        // Load recent claims for dropdown - localStorage access is synchronous
+        const claims = getAllCachedClaims<Claim>();
+        // Sort by most recent (newest first) and take top 5
+        const sorted = claims.sort((a, b) => b.cachedAt - a.cachedAt).slice(0, 5);
+        setRecentClaims(sorted);
+      } catch (error) {
+        // Handle errors gracefully - reset to empty state
+        setCacheCount(0);
+        setRecentClaims([]);
+      }
     };
 
-    // Update immediately
+    // Initial load on mount
     updateCount();
 
-    // Update count periodically (every 2 seconds)
+    // Handle cross-tab storage changes (when cache is updated in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key && e.key.startsWith('fact_checker_')) {
+        updateCount();
+      }
+    };
+
+    // Handle same-tab cache updates (via custom event from cache.ts)
+    const handleCacheUpdate = () => {
+      updateCount();
+    };
+
+    // Set up event listeners
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('cacheUpdated', handleCacheUpdate as EventListener);
+
+    // Periodic update as fallback (every 2 seconds)
     const interval = setInterval(updateCount, 2000);
 
-    return () => clearInterval(interval);
+    // Cleanup: remove event listeners and clear interval
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('cacheUpdated', handleCacheUpdate as EventListener);
+      clearInterval(interval);
+    };
   }, [isSidebarOpen, isDropdownOpen]);
 
-  // Keyboard shortcut: Ctrl/Cmd + H
+  /**
+   * Keyboard shortcut: Ctrl/Cmd + H to open history sidebar
+   */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
@@ -55,7 +123,9 @@ export default function HistoryButton() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Close dropdown when clicking outside
+  /**
+   * Close dropdown when clicking outside of it
+   */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -77,6 +147,13 @@ export default function HistoryButton() {
     };
   }, [isDropdownOpen]);
 
+  // ===== Event Handlers =====
+  
+  /**
+   * Handle button click:
+   * - If there are cached claims: toggle dropdown
+   * - Otherwise: open full sidebar
+   */
   const handleButtonClick = (e: React.MouseEvent) => {
     if (cacheCount > 0 && recentClaims.length > 0) {
       setIsDropdownOpen(!isDropdownOpen);
@@ -85,6 +162,11 @@ export default function HistoryButton() {
     }
   };
 
+  // ===== Helper Functions =====
+  
+  /**
+   * Format timestamp as relative date (e.g., "3h ago", "2d ago")
+   */
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = Date.now();
@@ -96,12 +178,15 @@ export default function HistoryButton() {
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
     
+    // For older dates, show month and day
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
     });
   };
 
+  // ===== Render =====
+  
   return (
     <>
       <div className="relative">

@@ -29,20 +29,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
  * Defaults to dark mode if no preference is stored.
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Initialize theme state - check localStorage synchronously if available
-  const getInitialTheme = (): Theme => {
-    // Only access localStorage on client side
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme') as Theme | null;
-      if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
-        return savedTheme;
-      }
-    }
-    // Default to dark mode
-    return 'dark';
-  };
-
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  // Initialize with default theme to ensure server/client hydration match
+  // Theme will be synced from localStorage in useEffect after mount
+  const [theme, setThemeState] = useState<Theme>('dark');
 
   /**
    * Apply theme to document root
@@ -61,7 +50,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Initialize theme on mount
-   * Applies the theme to the document root when component mounts
+   * Syncs theme from localStorage and applies it to the document root
+   */
+  useEffect(() => {
+    // Sync theme from localStorage on client side (runs once on mount)
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') as Theme | null;
+      if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+        setThemeState(savedTheme);
+        applyTheme(savedTheme);
+        return;
+      }
+    }
+    // Apply default theme if no saved theme found
+    applyTheme(theme);
+  }, []); // Empty deps - only run on mount
+
+  /**
+   * Apply theme whenever it changes
    */
   useEffect(() => {
     applyTheme(theme);

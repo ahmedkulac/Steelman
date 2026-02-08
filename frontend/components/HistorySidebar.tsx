@@ -1,3 +1,15 @@
+/**
+ * HistorySidebar Component
+ * 
+ * Full-screen sidebar that displays cached claim history with:
+ * - Search functionality
+ * - Sort by date or category
+ * - Expandable claim details
+ * - Copy to clipboard for claims and arguments
+ * - Real-time updates when cache changes
+ * - Hydration-safe: avoids localStorage access during SSR
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -19,13 +31,29 @@ interface HistorySidebarProps {
 }
 
 export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps) {
+  // ===== State Management =====
+  
+  /**
+   * Initialize with empty state to ensure server/client hydration match.
+   * localStorage is only accessed in useEffect (client-side only).
+   * This prevents hydration errors where server renders empty state
+   * but client renders with cached data.
+   */
   const [cachedClaims, setCachedClaims] = useState<CachedClaimEntry[]>([]);
   const [filteredClaims, setFilteredClaims] = useState<CachedClaimEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const [expandedClaim, setExpandedClaim] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'category'>('date');
 
+  // ===== Callback Functions =====
+  
+  /**
+   * Filter and sort claims based on search query and sort preference
+   * 
+   * @param claims - Array of cached claim entries
+   * @param query - Search query string
+   * @param sort - Sort mode: 'date' (newest first) or 'category' (alphabetical)
+   */
   const filterAndSortClaims = useCallback((
     claims: CachedClaimEntry[],
     query: string,
@@ -33,6 +61,7 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
   ) => {
     let filtered = [...claims];
 
+    // Filter by search query (searches claim content and category)
     if (query.trim()) {
       const lowerQuery = query.toLowerCase();
       filtered = filtered.filter(
@@ -42,11 +71,14 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
       );
     }
 
+    // Sort claims
     filtered.sort((a, b) => {
       if (sort === 'date') {
+        // Sort by date: newest first
         return b.cachedAt - a.cachedAt;
       } else {
-        const catA = a.data.category || 'zzz';
+        // Sort by category: alphabetical, then by date
+        const catA = a.data.category || 'zzz'; // Uncategorized goes last
         const catB = b.data.category || 'zzz';
         if (catA !== catB) {
           return catA.localeCompare(catB);
@@ -58,7 +90,10 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
     setFilteredClaims(filtered);
   }, []);
 
-  const loadCachedClaims = useCallback(() => {
+  /**
+   * Refresh cached claims from localStorage and apply current filters/sort
+   */
+  const refreshCachedClaims = useCallback(() => {
     try {
       const claims = getAllCachedClaims<Claim>();
       setCachedClaims(claims);
@@ -67,21 +102,59 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
       console.error('Failed to load cached claims:', error);
       setCachedClaims([]);
       setFilteredClaims([]);
-    } finally {
-      setLoading(false);
     }
   }, [searchQuery, sortBy, filterAndSortClaims]);
 
+  // ===== Effects =====
+  
+  /**
+   * Load cached claims when sidebar opens.
+   * Runs after component mounts to avoid hydration mismatches.
+   */
   useEffect(() => {
     if (isOpen) {
-      loadCachedClaims();
+      // Refresh immediately - localStorage access is synchronous and instant
+      refreshCachedClaims();
     }
-  }, [isOpen, loadCachedClaims]);
+  }, [isOpen, refreshCachedClaims]);
 
+  /**
+   * Listen for cache updates in real-time.
+   * Handles both cross-tab (StorageEvent) and same-tab (CustomEvent) updates.
+   */
+  useEffect(() => {
+    // Handle cross-tab storage changes (when cache is updated in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      // Only react to changes in our cache keys
+      if (e.key && e.key.startsWith('fact_checker_')) {
+        refreshCachedClaims();
+      }
+    };
+
+    // Handle same-tab cache updates (via custom event from cache.ts)
+    const handleCacheUpdate = () => {
+      refreshCachedClaims();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('cacheUpdated', handleCacheUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('cacheUpdated', handleCacheUpdate as EventListener);
+    };
+  }, [refreshCachedClaims]);
+
+  /**
+   * Re-filter and re-sort claims when search query or sort mode changes
+   */
   useEffect(() => {
     filterAndSortClaims(cachedClaims, searchQuery, sortBy);
   }, [searchQuery, sortBy, cachedClaims, filterAndSortClaims]);
 
+  /**
+   * Handle Escape key to close sidebar and prevent body scroll when open
+   */
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -91,7 +164,7 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden'; // Prevent background scrolling
     }
 
     return () => {
@@ -100,6 +173,11 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
     };
   }, [isOpen, onClose]);
 
+  // ===== Event Handlers =====
+  
+  /**
+   * Clear all cached claims after confirmation
+   */
   const handleClearAll = () => {
     if (window.confirm('Are you sure you want to clear all cached claims? This cannot be undone.')) {
       clearCache();
@@ -107,11 +185,19 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
     }
   };
 
+  /**
+   * Remove a single claim from cache
+   */
   const handleRemoveClaim = (claim: string) => {
     removeCachedClaim(claim);
-    loadCachedClaims();
+    refreshCachedClaims();
   };
 
+  // ===== Helper Functions =====
+  
+  /**
+   * Format timestamp as readable date string
+   */
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', {
@@ -122,6 +208,9 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
     });
   };
 
+  /**
+   * Get time until cache expiry as human-readable string
+   */
   const getTimeUntilExpiry = (expiresAt: number): string => {
     const now = Date.now();
     const diff = expiresAt - now;
@@ -133,6 +222,11 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
     return 'Expiring soon';
   };
 
+  // ===== Computed Values =====
+  
+  /**
+   * Dynamic class names for backdrop and sidebar based on open state
+   */
   const backdropClassName = `fixed inset-0 bg-black/50 dark:bg-black/70 z-40 transition-opacity duration-300 ${
     isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
   }`;
@@ -141,6 +235,8 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
     isOpen ? 'translate-x-0' : '-translate-x-full'
   }`;
 
+  // ===== Render =====
+  
   return (
     <>
       <div
@@ -185,7 +281,7 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
             </div>
           </div>
 
-          {!loading && cachedClaims.length > 0 && (
+          {cachedClaims.length > 0 && (
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
               <div className="relative">
                 <input
@@ -254,11 +350,7 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
           )}
 
           <div className="flex-1 overflow-y-auto p-4 history-sidebar-scroll">
-            {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
-              </div>
-            ) : cachedClaims.length === 0 ? (
+            {cachedClaims.length === 0 ? (
               <div className="text-center py-12 px-4">
                 <svg
                   className="mx-auto h-16 w-16 text-gray-300 dark:text-gray-600 mb-4"

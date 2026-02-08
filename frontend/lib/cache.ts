@@ -101,6 +101,11 @@ export function setCachedClaim<T>(
 
     localStorage.setItem(key, JSON.stringify(entry));
     
+    // Dispatch custom event to notify components of cache update
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cacheUpdated'));
+    }
+    
     // Clean up old entries if cache is too large
     cleanupCache();
   } catch (error) {
@@ -118,6 +123,11 @@ export function setCachedClaim<T>(
           cachedAt: Date.now(),
         };
         localStorage.setItem(key, JSON.stringify(entry));
+        
+        // Dispatch custom event to notify components of cache update
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('cacheUpdated'));
+        }
       } catch (retryError) {
         // Still failed, give up
         console.warn('Failed to cache claim result:', retryError);
