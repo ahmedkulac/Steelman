@@ -120,15 +120,11 @@ export default function ClaimInput() {
     <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-6">
       {/* URL Input Field */}
       <div>
-        <label
-          htmlFor="claim"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider"
-        >
-          Enter Article URL
-        </label>
+
         <input
           type="url"
           id="claim"
+          aria-label="Enter Article URL"
           {...register('claim')}
           className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:border-gray-900 dark:focus:border-gray-100 focus:outline-none transition-colors duration-200 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
           placeholder="https://example.com/article"

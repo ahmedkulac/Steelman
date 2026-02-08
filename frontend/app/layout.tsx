@@ -9,7 +9,7 @@ import { themeScript } from "./theme-script";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Fact Checker - Steelman Counter-Arguments",
+  title: "Steelman - Article Analysis",
   description: "Get AI-powered steelman counter-arguments to help you critically evaluate claims",
 };
 
