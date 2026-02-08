@@ -305,6 +305,37 @@ export default function AnalyzePage() {
                     Article Analysis & Fact Check
                 </h1>
 
+                {/* Navigation Back Link */}
+                <div className="mb-4">
+                    {result ? (
+                        <button
+                            onClick={() => {
+                                setResult(null);
+                                setUrl('');
+                                setTextInput('');
+                                setActiveHighlight(null);
+                                setHighlights([]);
+                            }}
+                            className="group inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
+                        >
+                            <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Back to Search
+                        </button>
+                    ) : (
+                        <Link
+                            href="/"
+                            className="group inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
+                        >
+                            <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Back to Home
+                        </Link>
+                    )}
+                </div>
+
                 {/* Input Section */}
                 {!result && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 mb-8">
@@ -388,23 +419,17 @@ export default function AnalyzePage() {
                     </div>
                 )}
 
+
+
                 {/* Results Section */}
                 {result && (
                     <div className="space-y-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                            <Link
-                                href="/"
-                                className="group flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
-                            >
-                                <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                </svg>
-                                Back to Home
-                            </Link>
-
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 mb-6">
                             <button
                                 onClick={() => {
                                     setResult(null);
+                                    setUrl('');
+                                    setTextInput('');
                                     setActiveHighlight(null);
                                     setHighlights([]);
                                 }}
@@ -573,6 +598,6 @@ export default function AnalyzePage() {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
