@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getAllCachedClaims, clearCache, removeCachedClaim } from '@/lib/cache';
 import { Claim } from '@/lib/api/claims';
@@ -49,13 +49,23 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
   }, [isOpen, onClose]);
 
   const loadCachedClaims = () => {
-    const claims = getAllCachedClaims<Claim>();
-    setCachedClaims(claims);
-    setLoading(false);
+    try {
+      const claims = getAllCachedClaims<Claim>();
+      setCachedClaims(claims);
+    } catch (error) {
+      console.error('Failed to load cached claims:', error);
+      setCachedClaims([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClearAll = () => {
-    if (confirm('Are you sure you want to clear all cached claims? This cannot be undone.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to clear all cached claims? This cannot be undone.'
+      )
+    ) {
       clearCache();
       setCachedClaims([]);
     }
@@ -100,8 +110,8 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md sm:max-w-lg bg-white dark:bg-gray-900 shadow-2xl z-50 transform transition-transform duration-300 ease-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed top-0 left-0 h-full w-full max-w-md sm:max-w-lg bg-white dark:bg-gray-900 shadow-2xl z-50 transform transition-transform duration-300 ease-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full">
@@ -289,12 +299,6 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
                                 )}
                                 <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
                                   <span>Strength: {arg.strength}/10</span>
-                                  {entry.data.confidenceScore && (
-                                    <>
-                                      <span>•</span>
-                                      <span>Confidence: {Math.round(entry.data.confidenceScore * 100)}%</span>
-                                    </>
-                                  )}
                                 </div>
                               </div>
                             ))}

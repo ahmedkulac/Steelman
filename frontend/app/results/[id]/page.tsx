@@ -11,10 +11,11 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getClaim, Claim } from '@/lib/api/claims';
 import SteelmanResult from '@/components/SteelmanResult';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 /**
  * ResultsPage Component
@@ -57,47 +58,37 @@ export default function ResultsPage() {
         clearInterval(pollInterval);
       }
     };
-  }, [claimId, polling]);
+  }, [claimId, polling, fetchClaim]);
 
   /**
    * Fetch claim data from API
    * 
    * @param showLoading - Whether to show loading spinner (default: true)
    */
-  const fetchClaim = async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true);
-      const data = await getClaim(claimId);
-      setClaim(data);
-      setError(null);
+  const fetchClaim = useCallback(
+    async (showLoading = true) => {
+      try {
+        if (showLoading) setLoading(true);
+        const data = await getClaim(claimId);
+        setClaim(data);
+        setError(null);
 
-      // Stop polling if claim processing is complete
-      if (data.processingStatus === 'completed' || data.processingStatus === 'failed') {
+        // Stop polling if claim processing is complete or failed
+        setPolling(
+          data.processingStatus !== 'completed' &&
+            data.processingStatus !== 'failed'
+        );
+      } catch (err: unknown) {
+        setError(
+          extractErrorMessage(err, 'Failed to load claim results')
+        );
         setPolling(false);
-      } else {
-        // Continue polling if still processing
-        setPolling(true);
+      } finally {
+        if (showLoading) setLoading(false);
       }
-    } catch (err: unknown) {
-      // Type-safe error handling
-      const error =
-        err && typeof err === 'object' && 'message' in err
-          ? (err as {
-              message?: string;
-              response?: { data?: { message?: string } };
-            })
-          : null;
-      
-      setError(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Failed to load claim results'
-      );
-      setPolling(false); // Stop polling on error
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  };
+    },
+    [claimId]
+  );
 
   // Loading state
   if (loading) {
@@ -159,7 +150,7 @@ export default function ResultsPage() {
         <button
           onClick={(e) => {
             e.preventDefault();
-            if (isNavigating) return; // Prevent multiple clicks
+            if (isNavigating) return;
             setIsNavigating(true);
             router.push('/');
           }}

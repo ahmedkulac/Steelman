@@ -9,25 +9,19 @@ export default function HistoryButton() {
   const [cacheCount, setCacheCount] = useState(0);
 
   useEffect(() => {
-    // Update count when sidebar opens/closes
-    if (isSidebarOpen) {
-      const stats = getCacheStats();
-      setCacheCount(stats.entries);
-    }
-  }, [isSidebarOpen]);
-
-  // Update count periodically
-  useEffect(() => {
     const updateCount = () => {
       const stats = getCacheStats();
       setCacheCount(stats.entries);
     };
 
+    // Update immediately
     updateCount();
-    const interval = setInterval(updateCount, 2000); // Update every 2 seconds
+
+    // Update count periodically (every 2 seconds)
+    const interval = setInterval(updateCount, 2000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isSidebarOpen]);
 
   return (
     <>
