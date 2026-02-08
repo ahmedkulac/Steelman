@@ -102,7 +102,7 @@ export default function AnalyzePage() {
                                 placeholder="Enter article URL (e.g., https://example.com/article)"
                                 value={url}
                                 onChange={(e) => setUrl(e.target.value)}
-                                className="flex-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-yellow-400 focus:outline-none"
                                 required
                                 disabled={loading}
                             />
@@ -148,7 +148,7 @@ export default function AnalyzePage() {
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             {/* Left Column: Article Text */}
-                            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+                            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-800">
                                 <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100 border-b pb-2">
                                     Source Article
                                 </h2>
@@ -169,7 +169,7 @@ export default function AnalyzePage() {
                                         </p>
                                     )}
                                 </div>
-                                <div className="prose dark:prose-invert max-w-none max-h-[600px] overflow-y-auto pr-2 custom-scrollbar text-sm leading-relaxed">
+                                <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed">
                                     <p className="whitespace-pre-wrap">{result.content}</p>
                                 </div>
                             </div>
@@ -177,9 +177,9 @@ export default function AnalyzePage() {
                             {/* Right Column: Analysis */}
                             <div className="space-y-6">
                                 {/* Summary Card */}
-                                <div className="bg-blue-50 dark:bg-slate-700/50 rounded-lg p-6 border border-blue-100 dark:border-slate-600">
+                                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-800">
                                     <h2 className="text-xl font-bold mb-3 text-slate-800 dark:text-slate-100 flex items-center">
-                                        <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full p-1 mr-2">
+                                        <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-full p-1 mr-2">
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                             </svg>
@@ -201,7 +201,7 @@ export default function AnalyzePage() {
 
                                     <div className="space-y-4">
                                         {result.analysis.claims.map((claim, index) => (
-                                            <div key={index} className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-5 border-l-4 border-indigo-500">
+                                            <div key={index} className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-5 border-l-4 border-yellow-400 dark:border-yellow-400 border-y border-r border-gray-200 dark:border-gray-800">
                                                 <div className="mb-3">
                                                     <div className="flex items-center justify-between mb-1">
                                                         <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
@@ -216,7 +216,7 @@ export default function AnalyzePage() {
 
                                                 <div className="mt-4">
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+                                                        <p className="text-xs font-bold text-yellow-600 dark:text-yellow-300 uppercase tracking-wide">
                                                             Steelman Counter-Argument
                                                         </p>
                                                         <CopyButton text={claim.counterArgument} size="sm" />
