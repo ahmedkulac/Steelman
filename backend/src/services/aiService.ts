@@ -12,7 +12,7 @@ import { createHash } from 'crypto';
 // Initialize Google Generative AI client
 // Supports both GOOGLE_API_KEY and GEMINI_API_KEY environment variables
 const genAI = new GoogleGenerativeAI(
-  process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || ''
+  'AIzaSyAUUiKmrSVckd9jeBp6plG4rvxjfuuYgUY'
 );
 
 /**
@@ -72,26 +72,26 @@ export function generateCacheKey(claim: string): string {
  */
 function repairJson(jsonString: string): string {
   let repaired = jsonString;
-  
+
   // Remove trailing commas before closing braces/brackets
   repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
-  
+
   // Count braces to check balance
   const openBraces = (repaired.match(/{/g) || []).length;
   const closeBraces = (repaired.match(/}/g) || []).length;
   const openBrackets = (repaired.match(/\[/g) || []).length;
   const closeBrackets = (repaired.match(/\]/g) || []).length;
-  
+
   // Add missing closing braces
   if (openBraces > closeBraces) {
     repaired += '}'.repeat(openBraces - closeBraces);
   }
-  
+
   // Add missing closing brackets
   if (openBrackets > closeBrackets) {
     repaired += ']'.repeat(openBrackets - closeBrackets);
   }
-  
+
   return repaired;
 }
 
@@ -115,14 +115,14 @@ export async function generateSteelmanArgument(
   const startTime = Date.now();
 
   // Validate API key is configured
-  const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = 'AIzaSyAUUiKmrSVckd9jeBp6plG4rvxjfuuYgUY';
   if (!apiKey) {
     throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is not configured');
   }
 
   // Build the prompt for AI
   const prompt = buildSteelmanPrompt(request);
-  
+
   // Get model name from env or use default (gemini-2.5-flash)
   const modelName = process.env.AI_MODEL || 'gemini-2.5-flash';
 
@@ -150,25 +150,25 @@ export async function generateSteelmanArgument(
 
     // Clean up content - remove markdown code blocks if present
     let cleanedContent = content.trim();
-    
+
     // Remove markdown code blocks (case-insensitive)
     if (cleanedContent.match(/^```json/i)) {
       cleanedContent = cleanedContent.replace(/^```json\s*/i, '').replace(/\s*```\s*$/, '');
     } else if (cleanedContent.startsWith('```')) {
       cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```\s*$/, '');
     }
-    
+
     // Extract JSON object if wrapped in text
     const jsonStart = cleanedContent.indexOf('{');
     const jsonEnd = cleanedContent.lastIndexOf('}');
-    
+
     if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
       cleanedContent = cleanedContent.substring(jsonStart, jsonEnd + 1);
     }
-    
+
     // Clean up common JSON issues
     cleanedContent = cleanedContent.trim();
-    
+
     // Parse JSON response with error handling
     let parsed;
     try {
@@ -182,7 +182,7 @@ export async function generateSteelmanArgument(
         console.warn('JSON parse error:', errorMessage);
         console.warn('Content preview (first 500 chars):', cleanedContent.substring(0, 500));
       }
-      
+
       // Try to repair common JSON issues
       try {
         const repaired = repairJson(cleanedContent);
@@ -249,10 +249,10 @@ export async function generateSteelmanArgument(
     return response;
   } catch (error: unknown) {
     console.error('AI Service Error:', error);
-    
+
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
-    
+
     // Provide helpful error messages for common issues
     if (
       errorMessage.includes('not found') ||
@@ -267,7 +267,7 @@ export async function generateSteelmanArgument(
         `Model "${modelName}" not found. ${suggestions.join('. ')}. Original error: ${errorMessage}`
       );
     }
-    
+
     throw new Error(
       `Failed to generate steelman argument: ${errorMessage}`
     );
