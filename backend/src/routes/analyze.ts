@@ -22,7 +22,9 @@ router.post('/', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Invalid URL provided' });
         }
 
-        console.log(`Analyzing article: ${url}`);
+        if (process.env.NODE_ENV === 'development') {
+            console.log(`[Analyze] Analyzing article: ${url}`);
+        }
 
         // 1. Fetch HTML
         const response = await axios.get(url, {
@@ -50,19 +52,7 @@ router.post('/', async (req: Request, res: Response) => {
         // 4. Analyze with AI
         const analysis = await analyzeArticle({
             title: article.title || 'Untitled Article',
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             content: article.textContent || '', // distinct from .content (HTML)
-=======
-            content: article.textContent || '',
->>>>>>> Stashed changes
-=======
-            content: article.textContent || '',
->>>>>>> Stashed changes
-=======
-            content: article.textContent || '',
->>>>>>> Stashed changes
             url: url,
         });
 
@@ -74,11 +64,15 @@ router.post('/', async (req: Request, res: Response) => {
             content: article.textContent, // Full text for display
             analysis: analysis,
         });
-    } catch (error: any) {
-        console.error('Analysis error:', error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[Analyze] Analysis error:', errorMessage);
+        if (process.env.NODE_ENV === 'development' && error instanceof Error) {
+            console.error('[Analyze] Stack:', error.stack);
+        }
         return res.status(500).json({
             error: 'Failed to analyze article',
-            details: error.message,
+            details: errorMessage,
         });
     }
 });

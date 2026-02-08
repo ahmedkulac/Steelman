@@ -108,15 +108,16 @@ app.use(errorHandler);
 initRedis().catch((error) => {
   // Only log in development to reduce noise in production
   if (process.env.NODE_ENV === 'development') {
-    console.warn('Redis initialization failed (optional):', error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('[Server] Redis initialization failed (optional):', errorMessage);
   }
 });
 
 // ==================== Start Server ====================
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`[Server] 🚀 Running on http://localhost:${PORT}`);
+  console.log(`[Server] 📊 Health check: http://localhost:${PORT}/health`);
 });
 
 export default app;

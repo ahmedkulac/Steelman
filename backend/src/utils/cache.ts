@@ -93,7 +93,7 @@ export async function initRedis(): Promise<void> {
   // Skip Redis if explicitly disabled in environment
   if (process.env.REDIS_ENABLED === 'false') {
     if (process.env.NODE_ENV === 'development') {
-      console.log('ℹ️  Redis disabled via REDIS_ENABLED=false - using in-memory cache');
+      console.log('[Cache] Redis disabled via REDIS_ENABLED=false - using in-memory cache');
     }
     return;
   }
@@ -117,7 +117,7 @@ export async function initRedis(): Promise<void> {
 
     // Handle Redis errors gracefully
     redisClient.on('error', (err) => {
-      console.warn('⚠️  Redis error (falling back to memory cache):', err.message);
+      console.warn('[Cache] Redis error (falling back to memory cache):', err.message);
       redisClient = null; // Disable Redis, use memory cache
     });
 
@@ -130,14 +130,14 @@ export async function initRedis(): Promise<void> {
     // Race connection vs timeout
     await Promise.race([connectPromise, timeoutPromise]);
     if (process.env.NODE_ENV === 'development') {
-      console.log('✅ Redis connected - using Redis + memory cache');
+      console.log('[Cache] Redis connected - using Redis + memory cache');
     }
   } catch (error: unknown) {
     // Log warning but don't throw - app works without Redis
     const errorMessage =
       error instanceof Error ? error.message : String(error);
     console.warn(
-      '⚠️  Redis connection failed, using in-memory cache only:',
+      '[Cache] Redis connection failed, using in-memory cache only:',
       errorMessage
     );
     redisClient = null;
@@ -165,7 +165,8 @@ export async function getCache(key: string): Promise<string | null> {
     } catch (error) {
       // Fall through to memory cache on Redis error
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Redis get error, falling back to memory cache:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.warn('[Cache] Redis get error, falling back to memory cache:', errorMessage);
       }
     }
   }
@@ -211,7 +212,8 @@ export async function setCache(
     } catch (error) {
       // Continue to memory cache even if Redis fails
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Redis set error, using memory cache only:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.warn('[Cache] Redis set error, using memory cache only:', errorMessage);
       }
     }
   }

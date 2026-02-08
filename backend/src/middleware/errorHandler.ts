@@ -22,7 +22,11 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ) => {
-  console.error('Error:', err);
+  // Always log errors for monitoring
+  console.error('[Error Handler]', err.message);
+  if (process.env.NODE_ENV === 'development') {
+    console.error('[Error Handler] Stack:', err.stack);
+  }
 
   // Use existing status code or default to 500
   const statusCode = res.statusCode !== 200 ? res.statusCode : 500;

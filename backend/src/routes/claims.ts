@@ -39,7 +39,10 @@ function parseSteelmanArguments(
   try {
     return JSON.parse(jsonString);
   } catch (error) {
-    console.error('Error parsing steelmanArguments:', error);
+    if (process.env.NODE_ENV === 'development') {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Claims] Error parsing steelmanArguments:', errorMessage);
+    }
     return null;
   }
 }
@@ -167,12 +170,16 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
       })
       .catch(async (error) => {
         // Handle AI generation errors gracefully
-        console.error('Error generating steelman argument:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[Claims] Error generating steelman argument:', errorMessage);
+        if (process.env.NODE_ENV === 'development' && error instanceof Error) {
+          console.error('[Claims] Stack:', error.stack);
+        }
         await prisma.claim.update({
           where: { id: newClaim.id },
           data: {
             processingStatus: 'failed',
-            errorMessage: error.message,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
           },
         });
       });
@@ -184,7 +191,11 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
       message: 'Claim submitted. Processing in background.',
     });
   } catch (error) {
-    console.error('Error creating claim:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Claims] Error creating claim:', errorMessage);
+    if (process.env.NODE_ENV === 'development' && error instanceof Error) {
+      console.error('[Claims] Stack:', error.stack);
+    }
     return res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to process claim submission',
@@ -226,7 +237,11 @@ router.get('/:id', async (req: Request, res: Response) => {
     // Format response with parsed JSON
     return res.json(formatClaimResponse(claim));
   } catch (error) {
-    console.error('Error fetching claim:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Claims] Error fetching claim:', errorMessage);
+    if (process.env.NODE_ENV === 'development' && error instanceof Error) {
+      console.error('[Claims] Stack:', error.stack);
+    }
     return res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to fetch claim',
@@ -286,7 +301,11 @@ router.get('/', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching claims:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Claims] Error fetching claims:', errorMessage);
+    if (process.env.NODE_ENV === 'development' && error instanceof Error) {
+      console.error('[Claims] Stack:', error.stack);
+    }
     return res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to fetch claims',
@@ -340,7 +359,11 @@ router.post('/:id/feedback', async (req: Request, res: Response) => {
 
     return res.status(201).json(feedback);
   } catch (error) {
-    console.error('Error creating feedback:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Claims] Error creating feedback:', errorMessage);
+    if (process.env.NODE_ENV === 'development' && error instanceof Error) {
+      console.error('[Claims] Stack:', error.stack);
+    }
     return res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to submit feedback',
