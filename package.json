@@ -18,7 +18,8 @@
     "db:generate": "npm run db:generate --workspace=backend",
     "db:migrate": "npm run db:migrate --workspace=backend",
     "db:studio": "npm run db:studio --workspace=backend",
-    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules"
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
+    "clean:nextjs": "powershell -ExecutionPolicy Bypass -File ./scripts/clean-nextjs.ps1"
   },
   "keywords": [
     "hackathon",

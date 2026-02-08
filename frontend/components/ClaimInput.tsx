@@ -85,7 +85,7 @@ export default function ClaimInput() {
    * 
    * 1. Submit claim to backend API
    * 2. Redirect to results page
-   * 3. Handle errors gracefully
+   * 3. Handle errors gracefully with detailed messages
    */
   const onSubmit = async (data: ClaimFormData) => {
     setIsSubmitting(true);
@@ -96,12 +96,30 @@ export default function ClaimInput() {
       // Redirect to results page with claim ID
       router.push(`/results/${response.id}`);
     } catch (err: any) {
-      // Display error message to user
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Failed to submit claim. Please try again.'
-      );
+      // Enhanced error handling with detailed messages
+      let errorMessage = 'Failed to submit claim. ';
+      
+      if (err.code === 'ECONNREFUSED' || err.message?.includes('Network Error') || !err.response) {
+        // Network/connection error
+        errorMessage += 'Cannot connect to backend server. ';
+        errorMessage += 'Please make sure the backend is running on http://localhost:5000';
+      } else if (err.response?.status === 429) {
+        // Rate limit error
+        errorMessage = err.response?.data?.message || 'Rate limit exceeded. Please try again later.';
+      } else if (err.response?.status === 400) {
+        // Validation error
+        errorMessage = err.response?.data?.message || 'Invalid input. Please check your claim.';
+      } else if (err.response?.data?.message) {
+        // Backend error message
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        // Generic error
+        errorMessage += err.message;
+      } else {
+        errorMessage += 'Please try again.';
+      }
+      
+      setError(errorMessage);
       setIsSubmitting(false);
     }
   };
