@@ -1,10 +1,10 @@
-# Quick Start Guide
+# Quick Start Guide - Fact Checker App
 
-Get your hackathon project running in 5 minutes!
+Get the Fact Checker app running in 5 minutes!
 
 ## 🚀 Fast Setup
 
-### Option 1: Using Setup Scripts
+### Option 1: Automated Setup (Easiest)
 
 **Windows (PowerShell):**
 ```powershell
@@ -17,6 +17,12 @@ chmod +x scripts/setup.sh
 ./scripts/setup.sh
 ```
 
+The setup script will:
+- ✅ Install all dependencies
+- ✅ Create `.env` files from examples
+- ✅ Generate Prisma client
+- ✅ Run database migrations
+
 ### Option 2: Manual Setup
 
 1. **Install dependencies:**
@@ -24,23 +30,30 @@ chmod +x scripts/setup.sh
    npm install
    ```
 
-2. **Set up environment:**
+2. **Set up environment files:**
    ```bash
-   cp .env.example .env
-   # Edit .env with your settings
+   # Backend
+   cp backend/.env.example backend/.env
+   
+   # Frontend
+   cp frontend/.env.local.example frontend/.env.local
    ```
 
-3. **Start database (Docker):**
+3. **Add your Google API key:**
+   - Get key from: https://makersuite.google.com/app/apikey
+   - Add to `backend/.env`: `GOOGLE_API_KEY=your-key-here`
+
+4. **Generate Prisma client:**
    ```bash
-   docker-compose up -d postgres
+   npm run db:generate
    ```
 
-4. **Run migrations:**
+5. **Run database migrations:**
    ```bash
    npm run db:migrate
    ```
 
-5. **Start dev servers:**
+6. **Start development servers:**
    ```bash
    npm run dev
    ```
@@ -50,7 +63,20 @@ chmod +x scripts/setup.sh
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:5000
 - **API Health**: http://localhost:5000/health
-- **Prisma Studio**: Run `npm run db:studio`
+
+## ✅ Verify Setup
+
+1. **Check backend health:**
+   - Visit: http://localhost:5000/health
+   - Should see: `{"status":"ok",...}`
+
+2. **Check frontend:**
+   - Visit: http://localhost:3000
+   - Should see the Fact Checker homepage
+
+3. **Test the app:**
+   - Enter a test claim
+   - Submit and wait for results
 
 ## 🛠️ Common Commands
 
@@ -65,73 +91,68 @@ npm run db:generate      # Generate Prisma client
 npm run db:migrate       # Run migrations
 npm run db:studio        # Open Prisma Studio
 
-# Build & Deploy
+# Build
 npm run build           # Build for production
 npm run start           # Start production servers
-
-# Code Quality
-npm run lint            # Run linters
-npm run type-check      # TypeScript type checking
 ```
 
-## 📁 Project Structure
+## 🔧 Configuration
 
-```
-.
-├── frontend/          # Next.js app (port 3000)
-│   ├── app/          # Pages and routes
-│   ├── components/   # React components
-│   └── lib/         # Utilities
-├── backend/          # Express API (port 5000)
-│   ├── src/         # Source code
-│   └── prisma/      # Database schema
-├── docs/            # Documentation
-└── scripts/         # Setup scripts
-```
+### Required: Google API Key
 
-## 🔧 Quick Customization
+1. Visit: https://makersuite.google.com/app/apikey
+2. Sign in with Google account
+3. Create API key
+4. Add to `backend/.env`:
+   ```env
+   GOOGLE_API_KEY=your-api-key-here
+   ```
 
-### Add a New API Route
+### Optional: Database
 
-1. Create file: `backend/src/routes/your-route.ts`
-2. Add route handler
-3. Import in `backend/src/routes/index.ts`
+**Default: SQLite** (no setup needed!)
+- Database file created automatically
+- No installation required
 
-### Add a New Page
-
-1. Create file: `frontend/app/your-page/page.tsx`
-2. Export default component
-3. Access at `/your-page`
-
-### Add Database Model
-
-1. Edit `backend/prisma/schema.prisma`
-2. Run `npm run db:generate`
-3. Run `npm run db:migrate`
+**To use PostgreSQL:**
+1. Install PostgreSQL or use Docker
+2. Update `DATABASE_URL` in `backend/.env`
+3. Update `backend/prisma/schema.prisma`
+4. Run migrations
 
 ## 🐛 Troubleshooting
 
-**Port already in use?**
-- Change ports in `.env` or kill the process
+### "Network Error" when submitting claim
+- **Backend not running**: Start with `npm run dev:backend`
+- **Wrong API URL**: Check `frontend/.env.local`
+- **Port conflict**: Change port in `backend/.env`
 
-**Database connection error?**
-- Check `DATABASE_URL` in `.env`
-- Ensure PostgreSQL is running: `docker-compose ps`
+### "GOOGLE_API_KEY is not configured"
+- Add your API key to `backend/.env`
+- Restart backend server
 
-**Module not found?**
-- Run `npm install` in the specific workspace
-- Check if package is in the correct `package.json`
+### Database errors
+- Run `npm run db:generate`
+- Run `npm run db:migrate`
+- SQLite creates database automatically
 
-**TypeScript errors?**
-- Run `npm run type-check` to see all errors
-- Ensure types are installed: `@types/package-name`
+### Port already in use
+- Change `PORT` in `backend/.env`
+- Update `NEXT_PUBLIC_API_URL` in `frontend/.env.local`
 
-## 📚 Need Help?
+## 📚 Next Steps
 
-- Check [README.md](./README.md) for detailed docs
-- See [docs/HACKATHON_TIPS.md](./docs/HACKATHON_TIPS.md) for hackathon advice
-- Review [docs/API.md](./docs/API.md) for API reference
+- Read [Setup Guide](./docs/PHASE1_SETUP.md) for detailed instructions
+- Check [API Documentation](./docs/API.md) for API reference
+- See [Troubleshooting](./docs/TROUBLESHOOTING.md) for more help
 
----
+## 🎯 What You Get
 
-**Ready to build? Start coding! 🎉**
+- ✅ Working fact-checker app
+- ✅ AI-powered counter-arguments
+- ✅ Mobile-responsive UI
+- ✅ SQLite database (no setup!)
+- ✅ Rate limiting
+- ✅ Error handling
+
+**Ready to fact-check! 🎉**
