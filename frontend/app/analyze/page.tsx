@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import { analyzeUrl } from '@/lib/api/analyze';
 import Link from 'next/link';
 
 interface AnalyzedClaim {
@@ -33,6 +33,23 @@ export default function AnalyzePage() {
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<AnalysisResult | null>(null);
 
+    // Check for result from sessionStorage (redirected from ClaimInput)
+    React.useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const storedResult = sessionStorage.getItem('analyzeResult');
+            if (storedResult) {
+                try {
+                    const parsedResult = JSON.parse(storedResult);
+                    setResult(parsedResult);
+                    // Clear sessionStorage after loading
+                    sessionStorage.removeItem('analyzeResult');
+                } catch (err) {
+                    console.error('Failed to parse stored result:', err);
+                }
+            }
+        }
+    }, []);
+
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!url) return;
@@ -42,13 +59,14 @@ export default function AnalyzePage() {
         setResult(null);
 
         try {
-            const response = await axios.post('http://localhost:5000/api/analyze', { url });
-            setResult(response.data);
+            const analysisResult = await analyzeUrl(url);
+            setResult(analysisResult);
         } catch (err: any) {
             console.error('Analysis failed:', err);
             setError(
                 err.response?.data?.error ||
                 err.response?.data?.message ||
+                err.message ||
                 'Failed to analyze article. Please check the URL and try again.'
             );
         } finally {
