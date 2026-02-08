@@ -425,8 +425,8 @@ export default function AnalyzePage() {
                                                         key={index}
                                                         ref={(el) => { if (el) cardRefs.current.set(`fact-${index}`, el); }}
                                                         className={`rounded-lg p-4 border transition-all duration-300 ${isActive
-                                                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 ring-2 ring-blue-400/50'
-                                                            : 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800'
+                                                            ? 'bg-green-50 dark:bg-green-900/20 border-green-400 ring-2 ring-green-400/50'
+                                                            : 'bg-green-50 dark:bg-green-900/10 border-green-100 dark:border-green-800'
                                                             }`}
                                                     >
                                                         <p className="text-xs font-bold uppercase tracking-wide mb-1 text-slate-500 dark:text-slate-400">
@@ -446,7 +446,7 @@ export default function AnalyzePage() {
                                                         </p>
 
                                                         {check.sources && check.sources.length > 0 && (
-                                                            <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+                                                            <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
                                                                 <SourcesList sources={check.sources} title="Verification Sources" />
                                                             </div>
                                                         )}
