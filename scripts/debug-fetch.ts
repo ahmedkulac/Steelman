@@ -4,8 +4,9 @@ import * as https from 'https';
 import * as http from 'http';
 import * as fs from 'fs';
 
-const targetUrl = 'https://www.cnn.com/2026/02/07/us/hanceville-alabama-police-reckoning';
-const url = `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(targetUrl)}`;
+// const targetUrl = 'https://www.cnn.com/2024/02/07/politics/senate-border-ukraine-israel-aid-vote/index.html';
+const targetUrl = 'https://apnews.com/article/trump-obama-racist-video-tim-scott-067cf84eea0ec4a03122d6';
+const url = targetUrl;
 const logFile = 'debug_output_cache.txt';
 
 function log(msg: string) {
@@ -14,66 +15,89 @@ function log(msg: string) {
 }
 
 async function debugFetch() {
-    fs.writeFileSync(logFile, `Debug Log for Fetching: ${url}\n\n`);
+    // Clear log file
+    fs.writeFileSync(logFile, '');
+
+    log(`Debug Log for Fetching: ${url}`);
+    log(`Time: ${new Date().toISOString()}`);
 
     const httpsAgent = new https.Agent({ family: 4, rejectUnauthorized: false });
     const httpAgent = new http.Agent({ family: 4 });
 
-    const userAgents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    // List of social bots to try
+    const bots = [
+        'Twitterbot/1.0',
+        'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+        'LinkedInBot/1.0 (compatible; Mozilla/5.0; Apache-HttpClient +http://www.linkedin.com)',
+        'Mozilla/5.0 (compatible; Bingbot/2.0; +http://www.bing.com/bingbot.htm)'
     ];
 
-    for (const ua of userAgents) {
-        log(`\n--- Trying UA: ${ua.substring(0, 50)}... ---`);
+    for (const bot of bots) {
         try {
+            log(`\n--- Trying Bot UA: ${bot} ---`);
             const response = await axios.get(url, {
                 headers: {
-                    'User-Agent': ua,
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Cache-Control': 'max-age=0',
+                    'User-Agent': bot,
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
                 },
                 timeout: 10000,
-                maxRedirects: 5,
-                validateStatus: (status) => status < 500,
                 httpsAgent,
                 httpAgent,
+                validateStatus: (status) => status < 500
             });
 
             log(`Status: ${response.status}`);
-            log(`Content-Type: ${response.headers['content-type']}`);
-            log(`Content-Length Header: ${response.headers['content-length']}`);
-            log(`Actual Data Length: ${response.data.length}`);
-
-            if (response.status === 200) {
-                log('SUCCESS (HTTP 200)!');
-                if (response.data.length < 1000) {
-                    log('WARNING: Content is very short!');
-                    log('Content Preview:');
-                    log(response.data);
-                } else {
-                    log('Content Preview (first 500 chars):');
-                    log(response.data.substring(0, 500));
-                }
-                return;
-            } else {
-                log(`Failed with status: ${response.status}`);
+            if (response.status === 200 && response.data.length > 2000) {
+                log('SUCCESS! This bot works.');
+                log(response.data.substring(0, 500));
+                return; // Found a working one
             }
         } catch (err: any) {
-            log(`ERROR: ${err.message}`);
-            if (err.code) log(`Code: ${err.code}`);
-            if (err.response) {
-                log(`Response Status: ${err.response.status}`);
-                log(`Response Data: ${err.response.data ? (typeof err.response.data === 'string' ? err.response.data.substring(0, 100) : 'JSON Data') : 'No Data'}`);
+            log(`Failed: ${err.message}`);
+            if (err.response) log(`Response Status: ${err.response.status}`);
+        }
+    }
+
+    const userAgent = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+
+    // Check Wayback Machine
+    const waybackApiUrl = `https://archive.org/wayback/available?url=${encodeURIComponent(targetUrl)}`;
+
+    try {
+        log(`--- Checking Wayback Machine: ${waybackApiUrl} ---`);
+        const response = await axios.get(waybackApiUrl, {
+            timeout: 15000,
+            httpsAgent,
+            httpAgent
+        });
+
+        log(`Wayback API Status: ${response.status}`);
+        if (response.data && response.data.archived_snapshots && response.data.archived_snapshots.closest) {
+            log('Snapshot FOUND!');
+            log(`Snapshot URL: ${response.data.archived_snapshots.closest.url}`);
+
+            // Try fetching the snapshot
+            const snapshotUrl = response.data.archived_snapshots.closest.url;
+            log(`\n--- Fetching Snapshot ---`);
+            const snapshotResponse = await axios.get(snapshotUrl, {
+                timeout: 30000, // Snapshots can be slow
+                httpsAgent,
+                httpAgent,
+                maxRedirects: 10
+            });
+            log(`Snapshot Fetch Status: ${snapshotResponse.status}`);
+            log(`Snapshot Data Length: ${snapshotResponse.data.length}`);
+            if (snapshotResponse.status === 200) {
+                log('Content Preview (first 500 chars):');
+                log(snapshotResponse.data.substring(0, 500));
             }
+        } else {
+            log('No snapshot found in Wayback Machine.');
+        }
+    } catch (err: any) {
+        log(`ERROR: ${err.message}`);
+        if (err.response) {
+            log(`Response Status: ${err.response.status}`);
         }
     }
 }

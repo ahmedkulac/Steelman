@@ -53,10 +53,11 @@ export interface AnalysisResult {
 /**
  * Analyze an article or social media post URL
  * 
- * @param url - URL to analyze
+ * @param url - URL to analyze (optional if text provided)
+ * @param text - Raw text content to analyze (optional)
  * @returns Promise resolving to analysis result
  */
-export async function analyzeUrl(url: string): Promise<AnalysisResult> {
-  const response = await api.post<AnalysisResult>('/analyze', { url });
+export async function analyzeUrl(url: string, text?: string): Promise<AnalysisResult> {
+  const response = await api.post<AnalysisResult>('/analyze', { url, text });
   return response.data;
 }

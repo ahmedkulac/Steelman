@@ -1,11 +1,17 @@
-Debug Log for Fetching: https://webcache.googleusercontent.com/search?q=cache:https%3A%2F%2Fwww.cnn.com%2F2026%2F02%2F07%2Fus%2Fhanceville-alabama-police-reckoning
+Debug Log for Fetching: https://apnews.com/article/trump-obama-racist-video-tim-scott-067cf84eea0ec4a03122d6
+Time: 2026-02-08T15:58:38.596Z
 
+--- Trying Bot UA: Twitterbot/1.0 ---
+Status: 404
 
---- Trying UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb... ---
-Status: 200
-Content-Type: text/html; charset=UTF-8
-Content-Length Header: undefined
-Actual Data Length: 86031
-SUCCESS (HTTP 200)!
-Content Preview (first 500 chars):
-<!DOCTYPE html><html lang="en"><head><title>Google Search</title><style>body{background-color:var(--xhUGwc)}</style><script nonce="PNldtTAvVqszhqTsVKJbLQ">window.google = window.google || {};window.google.c = window.google.c || {cap:0};</script></head><body><noscript><style>table,div,span,p{display:none}</style><meta content="0;url=/httpservice/retry/enablejs?sei=fEiIadzNKLSrqtsPpYWRqAg" http-equiv="refresh"><div style="display:block">Please click <a href="/httpservice/retry/enablejs?sei=fEiIadz
+--- Trying Bot UA: facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php) ---
+Status: 404
+
+--- Trying Bot UA: LinkedInBot/1.0 (compatible; Mozilla/5.0; Apache-HttpClient +http://www.linkedin.com) ---
+Status: 404
+
+--- Trying Bot UA: Mozilla/5.0 (compatible; Bingbot/2.0; +http://www.bing.com/bingbot.htm) ---
+Status: 403
+--- Checking Wayback Machine: https://archive.org/wayback/available?url=https%3A%2F%2Fapnews.com%2Farticle%2Ftrump-obama-racist-video-tim-scott-067cf84eea0ec4a03122d6 ---
+Wayback API Status: 200
+No snapshot found in Wayback Machine.

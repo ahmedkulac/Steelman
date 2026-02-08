@@ -142,9 +142,12 @@ export default function AnalyzePage() {
         scrollToHighlight(highlights[nextIndex]);
     };
 
+    const [showTextFallback, setShowTextFallback] = useState(false);
+    const [textInput, setTextInput] = useState('');
+
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!url) return;
+        if (!url && !textInput) return;
 
         setLoading(true);
         setError(null);
@@ -153,8 +156,10 @@ export default function AnalyzePage() {
         setHighlights([]);
 
         try {
-            const analysisResult = await analyzeUrl(url);
+            // If using text fallback, pass both URL (for reference) and text
+            const analysisResult = await analyzeUrl(url, showTextFallback ? textInput : undefined);
             setResult(analysisResult);
+            setShowTextFallback(false); // Reset fallback state on success
         } catch (err: any) {
             console.error('Analysis failed:', err);
             const errorData = err.response?.data;
@@ -335,6 +340,49 @@ export default function AnalyzePage() {
                             <div className="mt-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg border border-red-200 dark:border-red-800">
                                 <div className="font-semibold mb-2">{error.includes('paywall') ? '⚠️ Paywall Detected' : 'Error'}</div>
                                 <div className="text-sm">{error}</div>
+
+                                {/* Text Fallback Button */}
+                                {!showTextFallback && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowTextFallback(true)}
+                                        className="mt-3 text-sm font-medium underline hover:text-red-900 dark:hover:text-red-100 transition-colors"
+                                    >
+                                        Having trouble? Paste article text manually
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Text Fallback Input */}
+                        {showTextFallback && (
+                            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
+                                <h3 className="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">
+                                    Manual Text Entry
+                                </h3>
+                                <textarea
+                                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-sm min-h-[150px] mb-3 focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+                                    placeholder="Paste the full article text here..."
+                                    value={textInput}
+                                    onChange={(e) => setTextInput(e.target.value)}
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowTextFallback(false)}
+                                        className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleAnalyze}
+                                        disabled={!textInput || loading}
+                                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors disabled:opacity-50"
+                                    >
+                                        Analyze Text
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
