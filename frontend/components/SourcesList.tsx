@@ -5,7 +5,7 @@
  * Each source is clickable and opens in a new tab.
  */
 
-import { Source } from '@/lib/api/claims';
+import { Source } from '@/lib/api/analyze';
 
 interface SourcesListProps {
   sources: Source[];

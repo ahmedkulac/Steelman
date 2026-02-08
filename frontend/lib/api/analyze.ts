@@ -9,13 +9,27 @@ import api from '../api';
 /**
  * Analysis result structure from API
  */
+export interface Source {
+  title: string;
+  url: string;
+  snippet?: string;
+}
+
 export interface AnalyzedClaim {
   claim: string;
   quote: string;
   counterArgument: string;
   reasoning: string;
-  source?: string;
+  sources?: Source[];
   strength: number;
+}
+
+export interface FactCheck {
+  statement: string;
+  quote: string;
+  searchQuery: string;
+  verdict: 'verified' | 'disputed' | 'misleading' | 'needs_context';
+  reasoning: string;
 }
 
 export interface AnalysisResult {
@@ -28,6 +42,7 @@ export interface AnalysisResult {
   analysis: {
     summary: string;
     claims: AnalyzedClaim[];
+    factChecks: FactCheck[];
     biasScore: number;
     biasAnalysis: string;
     processingTime: number;
