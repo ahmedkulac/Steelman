@@ -12,18 +12,18 @@
  * - CORS enabled
  */
 
+import 'dotenv/config'; // Load env vars before anything else
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
+
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import apiRoutes from './routes';
 import { initRedis } from './utils/cache';
 
-// Load environment variables
-dotenv.config();
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -77,9 +77,9 @@ app.get('/', (_req, res) => {
 app.get('/health', async (_req, res) => {
   const { getCacheStats } = await import('./utils/cache');
   const cacheStats = getCacheStats();
-  
-  res.json({ 
-    status: 'ok', 
+
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     cache: cacheStats,
