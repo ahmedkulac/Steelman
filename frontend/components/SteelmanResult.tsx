@@ -3,7 +3,6 @@
  * 
  * Displays the results of fact-checking a claim, including:
  * - Original claim
- * - Confidence score
  * - Steelman counter-arguments with reasoning and evidence
  * - Processing status (pending, processing, completed, failed)
  * 
@@ -13,7 +12,6 @@
 'use client';
 
 import { CounterArgument, Claim } from '@/lib/api/claims';
-import ConfidenceBadge from './ConfidenceBadge';
 import EvidenceList from './EvidenceList';
 import SourcesList from './SourcesList';
 
@@ -30,7 +28,7 @@ interface SteelmanResultProps {
  * - Success state with counter-arguments
  */
 export default function SteelmanResult({ claim }: SteelmanResultProps) {
-  const { content, steelmanArguments, confidenceScore, processingStatus } =
+  const { content, steelmanArguments, processingStatus } =
     claim;
 
   // Show loading state while processing
@@ -89,13 +87,6 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
           <SourcesList sources={claim.claimSources} title="Sources Supporting This Claim" />
         )}
       </div>
-
-      {/* Confidence Score Badge */}
-      {confidenceScore !== undefined && (
-        <div className="flex items-center justify-center">
-          <ConfidenceBadge score={confidenceScore} />
-        </div>
-      )}
 
       {/* Counter Arguments Section */}
       <div className="space-y-4">

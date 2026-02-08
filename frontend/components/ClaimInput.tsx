@@ -178,7 +178,7 @@ export default function ClaimInput() {
   return (
     <div className="w-full space-y-6">
       {/* Mode Selector */}
-      <div className="flex gap-2 border-b-2 border-gray-300 dark:border-gray-600">
+      <div className="relative flex gap-2 border-b-2 border-gray-300 dark:border-gray-600">
         <button
           type="button"
           onClick={() => {
@@ -187,13 +187,16 @@ export default function ClaimInput() {
             claimForm.reset();
             urlForm.reset();
           }}
-          className={`flex-1 py-3 px-4 text-sm font-semibold uppercase tracking-wider transition-colors duration-200 ${
+          className={`relative flex-1 py-3 px-4 text-sm font-semibold uppercase tracking-wider transition-all duration-300 ease-out ${
             mode === 'claim'
-              ? 'border-b-2 border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100'
+              ? 'text-gray-900 dark:text-gray-100'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
-          Claim
+          <span className="relative z-10">Claim</span>
+          {mode === 'claim' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 animate-slide-in" />
+          )}
         </button>
         <button
           type="button"
@@ -203,29 +206,33 @@ export default function ClaimInput() {
             claimForm.reset();
             urlForm.reset();
           }}
-          className={`flex-1 py-3 px-4 text-sm font-semibold uppercase tracking-wider transition-colors duration-200 ${
+          className={`relative flex-1 py-3 px-4 text-sm font-semibold uppercase tracking-wider transition-all duration-300 ease-out ${
             mode === 'url'
-              ? 'border-b-2 border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100'
+              ? 'text-gray-900 dark:text-gray-100'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
-          URL
+          <span className="relative z-10">URL</span>
+          {mode === 'url' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 animate-slide-in" />
+          )}
         </button>
       </div>
 
       {/* Claim Text Form */}
       {mode === 'claim' && (
         <form onSubmit={claimForm.handleSubmit(onSubmitClaim)} className="space-y-6">
-          <div>
+          <div className="relative">
             <textarea
               id="claim-input"
               aria-label="Enter your claim"
               {...claimForm.register('input')}
               rows={4}
-              className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:border-gray-900 dark:focus:border-gray-100 focus:outline-none transition-colors duration-200 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 resize-none"
+              className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:border-gray-900 dark:focus:border-gray-100 focus:outline-none transition-all duration-300 ease-out text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:scale-[1.01] focus:shadow-sm peer"
               placeholder="Enter your claim or statement to fact-check..."
               disabled={isSubmitting}
             />
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 transform scale-x-0 transition-transform duration-300 origin-left peer-focus:scale-x-100" />
             <div className="mt-1">
               {claimForm.formState.errors.input && (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -236,16 +243,17 @@ export default function ClaimInput() {
           </div>
 
           {/* Optional Context Field */}
-          <div>
+          <div className="relative">
             <textarea
               id="context-input"
               aria-label="Additional context (optional)"
               {...claimForm.register('context')}
               rows={2}
-              className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:border-gray-900 dark:focus:border-gray-100 focus:outline-none transition-colors duration-200 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 resize-none"
+              className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:border-gray-900 dark:focus:border-gray-100 focus:outline-none transition-all duration-300 ease-out text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:scale-[1.01] focus:shadow-sm peer"
               placeholder="Additional context (optional)"
               disabled={isSubmitting}
             />
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 transform scale-x-0 transition-transform duration-300 origin-left peer-focus:scale-x-100" />
             <div className="mt-1">
               {claimForm.formState.errors.context && (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -277,9 +285,15 @@ export default function ClaimInput() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-gray-900 hover:bg-yellow-300 dark:bg-gray-100 dark:hover:bg-yellow-300 disabled:bg-gray-400 disabled:cursor-not-allowed text-white hover:text-black dark:text-black dark:hover:text-black font-semibold py-4 px-6 uppercase tracking-widest transition-all duration-300 border border-transparent hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
+            className="relative w-full bg-gray-900 hover:bg-yellow-300 dark:bg-gray-100 dark:hover:bg-yellow-300 disabled:bg-gray-400 disabled:cursor-not-allowed text-white hover:text-black dark:text-black dark:hover:text-black font-semibold py-4 px-6 uppercase tracking-widest transition-all duration-300 ease-out border border-transparent hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-xl disabled:hover:scale-100 disabled:hover:shadow-md overflow-hidden group"
           >
-            {isSubmitting ? 'PROCESSING...' : 'STEELMAN THIS'}
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              {isSubmitting && (
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              )}
+              {isSubmitting ? 'PROCESSING...' : 'STEELMAN THIS'}
+            </span>
+            <span className="absolute inset-0 bg-gradient-to-r from-yellow-300/0 via-yellow-300/20 to-yellow-300/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
           </button>
         </form>
       )}
@@ -287,16 +301,17 @@ export default function ClaimInput() {
       {/* URL Form */}
       {mode === 'url' && (
         <form onSubmit={urlForm.handleSubmit(onSubmitUrl)} className="space-y-6">
-          <div>
+          <div className="relative">
             <input
               type="url"
               id="url-input"
               aria-label="Enter article or social media post URL"
               {...urlForm.register('input')}
-              className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:border-gray-900 dark:focus:border-gray-100 focus:outline-none transition-colors duration-200 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+              className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:border-gray-900 dark:focus:border-gray-100 focus:outline-none transition-all duration-300 ease-out text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:scale-[1.01] focus:shadow-sm peer"
               placeholder="https://example.com/article or https://twitter.com/user/status/123"
               disabled={isSubmitting}
             />
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 transform scale-x-0 transition-transform duration-300 origin-left peer-focus:scale-x-100" />
             <div className="mt-1">
               {urlForm.formState.errors.input && (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -331,9 +346,15 @@ export default function ClaimInput() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-gray-900 hover:bg-yellow-300 dark:bg-gray-100 dark:hover:bg-yellow-300 disabled:bg-gray-400 disabled:cursor-not-allowed text-white hover:text-black dark:text-black dark:hover:text-black font-semibold py-4 px-6 uppercase tracking-widest transition-all duration-300 border border-transparent hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
+            className="relative w-full bg-gray-900 hover:bg-yellow-300 dark:bg-gray-100 dark:hover:bg-yellow-300 disabled:bg-gray-400 disabled:cursor-not-allowed text-white hover:text-black dark:text-black dark:hover:text-black font-semibold py-4 px-6 uppercase tracking-widest transition-all duration-300 ease-out border border-transparent hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-xl disabled:hover:scale-100 disabled:hover:shadow-md overflow-hidden group"
           >
-            {isSubmitting ? 'ANALYZING...' : 'ANALYZE ARTICLE'}
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              {isSubmitting && (
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              )}
+              {isSubmitting ? 'ANALYZING...' : 'ANALYZE ARTICLE'}
+            </span>
+            <span className="absolute inset-0 bg-gradient-to-r from-yellow-300/0 via-yellow-300/20 to-yellow-300/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
           </button>
         </form>
       )}
