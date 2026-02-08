@@ -257,8 +257,19 @@ export default function ClaimInput() {
 
           {/* Error Message Display */}
           {error && (
-            <div className="p-4 border border-gray-300 dark:border-gray-700 rounded-none bg-gray-50 dark:bg-gray-800">
-              <p className="text-sm text-gray-800 dark:text-gray-200">{error}</p>
+            <div className={`p-4 border rounded-none ${
+              error.toLowerCase().includes('paywall') 
+                ? 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20' 
+                : 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'
+            }`}>
+              <p className={`text-sm font-medium ${
+                error.toLowerCase().includes('paywall')
+                  ? 'text-orange-800 dark:text-orange-200'
+                  : 'text-gray-800 dark:text-gray-200'
+              }`}>
+                {error.toLowerCase().includes('paywall') && '⚠️ '}
+                {error}
+              </p>
             </div>
           )}
 
@@ -300,8 +311,19 @@ export default function ClaimInput() {
 
           {/* Error Message Display */}
           {error && (
-            <div className="p-4 border border-gray-300 dark:border-gray-700 rounded-none bg-gray-50 dark:bg-gray-800">
-              <p className="text-sm text-gray-800 dark:text-gray-200">{error}</p>
+            <div className={`p-4 border rounded-none ${
+              error.toLowerCase().includes('paywall') 
+                ? 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20' 
+                : 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'
+            }`}>
+              <p className={`text-sm font-medium ${
+                error.toLowerCase().includes('paywall')
+                  ? 'text-orange-800 dark:text-orange-200'
+                  : 'text-gray-800 dark:text-gray-200'
+              }`}>
+                {error.toLowerCase().includes('paywall') && '⚠️ '}
+                {error}
+              </p>
             </div>
           )}
 

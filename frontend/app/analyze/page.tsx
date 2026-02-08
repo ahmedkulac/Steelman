@@ -84,6 +84,7 @@ export default function AnalyzePage() {
     };
 
     return (
+        <div className="min-h-screen bg-white dark:bg-black">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             <h1 className="text-3xl font-bold mb-6 text-center text-slate-800 dark:text-slate-100">
                 Article Analysis & Fact Check
@@ -121,7 +122,8 @@ export default function AnalyzePage() {
                 </form>
                 {error && (
                     <div className="mt-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg border border-red-200 dark:border-red-800">
-                        {error}
+                        <div className="font-semibold mb-2">{error.includes('paywall') ? '⚠️ Paywall Detected' : 'Error'}</div>
+                        <div className="text-sm">{error}</div>
                     </div>
                 )}
             </div>
@@ -240,6 +242,7 @@ export default function AnalyzePage() {
                     </div>
                 </div>
             )}
+        </div>
         </div>
     );
 }

@@ -92,47 +92,186 @@ router.post('/', async (req: Request, res: Response) => {
         } else {
             // Handle regular articles using Readability
             try {
-                // 1. Fetch HTML
+                // 1. Fetch HTML with enhanced headers to bypass basic bot detection
                 const response = await axios.get(url, {
                     headers: {
-                        // Mimic a browser to avoid some bot detection
+                        // Enhanced browser headers to mimic real user
                         'User-Agent':
-                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (HTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                         'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'DNT': '1',
+                        'Connection': 'keep-alive',
+                        'Upgrade-Insecure-Requests': '1',
+                        'Sec-Fetch-Dest': 'document',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Site': 'none',
+                        'Cache-Control': 'max-age=0',
                     },
-                    timeout: 15000, // 15s timeout
+                    timeout: 20000, // 20s timeout for slower sites
                     maxRedirects: 5,
+                    validateStatus: (status) => status < 500, // Accept 4xx but log them
                 });
 
-                // 2. Parse HTML with JSDOM
-                const dom = new JSDOM(response.data, {
-                    url: url,
+                // Check for common paywall indicators
+                const htmlContent = typeof response.data === 'string' ? response.data : '';
+                const lowerContent = htmlContent.toLowerCase();
+                
+                // Check domain-specific paywall patterns FIRST (most reliable)
+                const domain = new URL(url).hostname.toLowerCase();
+                const paywalledDomains = [
+                    'wsj.com',
+                    'nytimes.com',
+                    'washingtonpost.com',
+                    'ft.com',
+                    'economist.com',
+                    'bloomberg.com',
+                    'reuters.com', // Sometimes paywalled
+                ];
+                
+                const isPaywalledDomain = paywalledDomains.some(paywallDomain => 
+                    domain.includes(paywallDomain)
+                );
+                
+                // Check for paywall indicators in content
+                const paywallIndicators = [
+                    'subscribe to continue reading',
+                    'sign in to continue reading',
+                    'this article is for subscribers only',
+                    'paywall',
+                    'subscription required',
+                    'unlock this article',
+                    'premium content',
+                    'member exclusive',
+                    'log in to read',
+                    'create an account',
+                    'free article limit',
+                    'you\'ve reached your article limit',
+                    'continue reading',
+                ];
+                
+                const hasPaywallText = paywallIndicators.some(indicator => 
+                    lowerContent.includes(indicator)
+                );
+                
+                // Parse HTML once
+                const dom = new JSDOM(htmlContent, { url });
+                const document = dom.window.document;
+                
+                // Also check for common paywall class/ID patterns in HTML
+                const paywallSelectors = [
+                    '[class*="paywall"]',
+                    '[class*="subscription"]',
+                    '[id*="paywall"]',
+                    '[id*="subscription"]',
+                    '[data-paywall]',
+                    '.paywall',
+                    '#paywall',
+                ];
+                
+                const hasPaywallElement = paywallSelectors.some(selector => {
+                    try {
+                        return document.querySelector(selector) !== null;
+                    } catch {
+                        return false;
+                    }
                 });
+                
+                // If it's a known paywalled domain, treat it as paywalled immediately
+                const detectedPaywall = isPaywalledDomain || hasPaywallText || hasPaywallElement;
+                
+                // For known paywalled domains, return error immediately
+                if (isPaywalledDomain) {
+                    return res.status(422).json({
+                        error: 'Article is behind a paywall',
+                        details: `Articles from ${domain} require a subscription to access. We cannot extract content from paywalled articles.`,
+                        suggestion: 'Please copy and paste the article text directly as a claim (use the "Claim" mode instead of "URL" mode), or try a publicly accessible article from a different source.',
+                    });
+                }
 
                 // 3. Extract content with Readability
-                const reader = new Readability(dom.window.document);
+                const reader = new Readability(document);
                 const article = reader.parse();
 
                 if (!article) {
+                    // Try to extract title from meta tags as fallback
+                    const titleMeta = document.querySelector('meta[property="og:title"]') ||
+                                     document.querySelector('title');
+                    const extractedTitle = titleMeta?.getAttribute('content') || titleMeta?.textContent || '';
+                    
+                    if (detectedPaywall) {
+                        return res.status(422).json({
+                            error: 'Article is behind a paywall',
+                            details: 'This article requires a subscription to access. We cannot extract content from paywalled articles like WSJ, NYTimes, or other subscription-based publications.',
+                            suggestion: 'Please copy and paste the article text directly as a claim (use the "Claim" mode instead of "URL" mode), or try a publicly accessible article.',
+                        });
+                    }
+                    
                     return res.status(422).json({
                         error: 'Failed to extract article content',
-                        suggestion: 'The URL might not be a valid article, or the content structure is not supported.',
+                        details: extractedTitle ? `Found title: "${extractedTitle}" but could not extract article body.` : 'Could not parse article structure.',
+                        suggestion: 'The URL might not be a valid article, the content structure is not supported, or the article may be behind a paywall. Try copying the article text and submitting it as a claim instead.',
+                    });
+                }
+
+                // Check if extracted content is too short (might be paywall)
+                const extractedContent = article.textContent || '';
+                const contentLength = extractedContent.trim().length;
+                
+                // If content is very short and we detected paywall indicators, it's likely paywalled
+                if (contentLength < 100 && detectedPaywall) {
+                    return res.status(422).json({
+                        error: 'Article is behind a paywall',
+                        details: `Only ${contentLength} characters were extracted. This article likely requires a subscription to access the full content.`,
+                        suggestion: 'Please copy and paste the article text directly as a claim (use the "Claim" mode instead of "URL" mode), or try a publicly accessible article.',
+                    });
+                }
+                
+                // If content is suspiciously short even without explicit paywall detection
+                if (contentLength < 50) {
+                    return res.status(422).json({
+                        error: 'Insufficient article content extracted',
+                        details: `Only ${contentLength} characters were extracted. The article may be behind a paywall or have restricted access.`,
+                        suggestion: 'Please copy and paste the article text directly as a claim (use the "Claim" mode instead of "URL" mode), or try a publicly accessible article.',
                     });
                 }
 
                 title = article.title || 'Untitled Article';
-                content = article.textContent || '';
+                content = extractedContent;
                 byline = article.byline || undefined;
                 excerpt = article.excerpt || undefined;
+                
+                // Additional validation: ensure we got meaningful content
+                if (!content || content.trim().length < 50) {
+                    return res.status(422).json({
+                        error: 'Insufficient article content extracted',
+                        details: hasPaywall 
+                            ? 'This article appears to be behind a paywall.'
+                            : 'Could not extract enough content from the article.',
+                        suggestion: hasPaywall
+                            ? 'Please try a publicly accessible article, or copy and paste the article text directly as a claim instead.'
+                            : 'Please check the URL and ensure the article is publicly accessible.',
+                    });
+                }
             } catch (articleError: unknown) {
                 const errorMessage = articleError instanceof Error ? articleError.message : 'Unknown error';
                 console.error('[Analyze] Failed to extract article content:', errorMessage);
                 
+                // Check for specific error types
+                let suggestion = 'Please check the URL and ensure the article is accessible.';
+                if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
+                    suggestion = 'This article may be behind a paywall or require authentication. Try copying the article text and submitting it as a claim instead.';
+                } else if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+                    suggestion = 'The article URL may be invalid or the page may have been removed.';
+                } else if (errorMessage.includes('timeout')) {
+                    suggestion = 'The request timed out. The website may be slow or blocking automated requests.';
+                }
+                
                 return res.status(422).json({
                     error: 'Failed to extract article content',
                     details: errorMessage,
-                    suggestion: 'Please check the URL and ensure the article is accessible.',
+                    suggestion: suggestion,
                 });
             }
         }

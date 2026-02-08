@@ -110,7 +110,7 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full w-full max-w-md sm:max-w-lg bg-white dark:bg-gray-900 shadow-2xl z-50 transform transition-transform duration-300 ease-out ${
+        className={`fixed top-0 left-0 h-full w-full max-w-md sm:max-w-lg bg-white dark:bg-black border-r-2 border-gray-200 dark:border-gray-800 shadow-2xl z-50 transform transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -209,13 +209,13 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
                 {cachedClaims.map((entry, index) => (
                   <div
                     key={index}
-                    className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
+                    className="bg-[#181a1c] dark:bg-[#181a1c] rounded-lg border border-gray-700 dark:border-gray-700 p-4 hover:shadow-md hover:border-gray-600 dark:hover:border-gray-600 transition-all duration-200"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           {entry.data.category && (
-                            <span className="px-2 py-0.5 text-xs font-semibold uppercase rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                            <span className="px-2 py-0.5 text-xs font-semibold uppercase rounded bg-gray-700 dark:bg-gray-700 text-gray-200 dark:text-gray-300">
                               {entry.data.category}
                             </span>
                           )}
@@ -226,11 +226,11 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
                           )}
                         </div>
                         
-                        <p className="text-sm text-gray-900 dark:text-gray-100 font-medium mb-2 line-clamp-2">
+                        <p className="text-sm text-gray-100 dark:text-gray-100 font-medium mb-2 line-clamp-2">
                           {entry.data.content || entry.claim}
                         </p>
                         
-                        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-400">
                           <span>{formatDate(entry.cachedAt)}</span>
                           <span>•</span>
                           <span>{getTimeUntilExpiry(entry.expiresAt)}</span>
@@ -242,21 +242,21 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
                           <Link
                             href={`/results/${entry.data.id}`}
                             onClick={onClose}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                            className="px-3 py-1.5 text-xs font-medium text-gray-100 dark:text-gray-100 bg-gray-700 dark:bg-gray-700 rounded hover:bg-gray-600 dark:hover:bg-gray-600 transition-colors"
                           >
                             View
                           </Link>
                         ) : (
                           <button
                             onClick={() => setExpandedClaim(expandedClaim === index ? null : index)}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                            className="px-3 py-1.5 text-xs font-medium text-gray-100 dark:text-gray-100 bg-gray-700 dark:bg-gray-700 rounded hover:bg-gray-600 dark:hover:bg-gray-600 transition-colors"
                           >
                             {expandedClaim === index ? 'Hide' : 'View'}
                           </button>
                         )}
                         <button
                           onClick={() => handleRemoveClaim(entry.claim)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-red-400 dark:hover:text-red-400 transition-colors"
                           title="Remove"
                         >
                           <svg
@@ -281,23 +281,23 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
                       <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 animate-[slideDown_0.2s_ease-out]">
                         {entry.data.steelmanArguments && entry.data.steelmanArguments.length > 0 ? (
                           <div className="space-y-3">
-                            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                            <h4 className="text-xs font-semibold text-gray-300 dark:text-gray-300 uppercase tracking-wide">
                               Counter-Arguments ({entry.data.steelmanArguments.length})
                             </h4>
                             {entry.data.steelmanArguments.map((arg, argIndex) => (
                               <div
                                 key={argIndex}
-                                className="bg-white dark:bg-gray-900 rounded p-3 border border-gray-200 dark:border-gray-700"
+                                className="bg-gray-700 dark:bg-gray-800 rounded p-3 border border-gray-600 dark:border-gray-700"
                               >
-                                <p className="text-sm text-gray-900 dark:text-gray-100 font-medium mb-1">
+                                <p className="text-sm text-gray-100 dark:text-gray-100 font-medium mb-1">
                                   {arg.argument}
                                 </p>
                                 {arg.reasoning && (
-                                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                  <p className="text-xs text-gray-300 dark:text-gray-400 mb-2">
                                     {arg.reasoning}
                                   </p>
                                 )}
-                                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
+                                <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
                                   <span>Strength: {arg.strength}/10</span>
                                 </div>
                               </div>

@@ -76,6 +76,7 @@ export default function HistoryPage() {
   }
 
   return (
+    <div className="min-h-screen bg-white dark:bg-black">
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -284,6 +285,7 @@ export default function HistoryPage() {
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }
