@@ -60,6 +60,42 @@ export function generateCacheKey(claim: string): string {
 }
 
 /**
+ * Attempt to repair common JSON issues
+ * 
+ * Tries to fix common JSON malformation issues like:
+ * - Unterminated strings
+ * - Unescaped quotes
+ * - Missing closing braces
+ * 
+ * @param jsonString - Potentially malformed JSON string
+ * @returns Repaired JSON string (may still be invalid)
+ */
+function repairJson(jsonString: string): string {
+  let repaired = jsonString;
+  
+  // Remove trailing commas before closing braces/brackets
+  repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
+  
+  // Count braces to check balance
+  const openBraces = (repaired.match(/{/g) || []).length;
+  const closeBraces = (repaired.match(/}/g) || []).length;
+  const openBrackets = (repaired.match(/\[/g) || []).length;
+  const closeBrackets = (repaired.match(/\]/g) || []).length;
+  
+  // Add missing closing braces
+  if (openBraces > closeBraces) {
+    repaired += '}'.repeat(openBraces - closeBraces);
+  }
+  
+  // Add missing closing brackets
+  if (openBrackets > closeBrackets) {
+    repaired += ']'.repeat(openBrackets - closeBrackets);
+  }
+  
+  return repaired;
+}
+
+/**
  * Generate steelman counter-arguments using Google Gemini AI
  * 
  * This function:
@@ -114,14 +150,64 @@ export async function generateSteelmanArgument(
 
     // Clean up content - remove markdown code blocks if present
     let cleanedContent = content.trim();
-    if (cleanedContent.startsWith('```json')) {
-      cleanedContent = cleanedContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    
+    // Remove markdown code blocks (case-insensitive)
+    if (cleanedContent.match(/^```json/i)) {
+      cleanedContent = cleanedContent.replace(/^```json\s*/i, '').replace(/\s*```\s*$/, '');
     } else if (cleanedContent.startsWith('```')) {
-      cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```\s*$/, '');
     }
-
-    // Parse JSON response
-    const parsed = JSON.parse(cleanedContent);
+    
+    // Extract JSON object if wrapped in text
+    const jsonStart = cleanedContent.indexOf('{');
+    const jsonEnd = cleanedContent.lastIndexOf('}');
+    
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      cleanedContent = cleanedContent.substring(jsonStart, jsonEnd + 1);
+    }
+    
+    // Clean up common JSON issues
+    cleanedContent = cleanedContent.trim();
+    
+    // Parse JSON response with error handling
+    let parsed;
+    try {
+      parsed = JSON.parse(cleanedContent);
+    } catch (parseError: any) {
+      // Enhanced error handling for malformed JSON
+      console.warn('JSON parse error:', parseError.message);
+      console.warn('Content preview (first 500 chars):', cleanedContent.substring(0, 500));
+      
+      // Try to repair common JSON issues
+      try {
+        const repaired = repairJson(cleanedContent);
+        parsed = JSON.parse(repaired);
+        console.log('Successfully repaired JSON');
+      } catch (repairError: any) {
+        // If repair fails, try to extract just the JSON object more aggressively
+        const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            const extractedJson = repairJson(jsonMatch[0]);
+            parsed = JSON.parse(extractedJson);
+            console.log('Successfully extracted and parsed JSON');
+          } catch (extractError) {
+            // Final fallback - provide helpful error message
+            console.error('All JSON repair attempts failed');
+            throw new Error(
+              `Failed to parse AI response as JSON: ${parseError.message}. ` +
+              `The AI may have returned malformed JSON. Please try submitting the claim again. ` +
+              `If the issue persists, try rephrasing your claim or contact support.`
+            );
+          }
+        } else {
+          throw new Error(
+            `Failed to parse AI response as JSON: ${parseError.message}. ` +
+            `No valid JSON object found in response. Please try again.`
+          );
+        }
+      }
+    }
     const processingTime = Date.now() - startTime;
 
     // Validate and transform the response
@@ -226,13 +312,22 @@ You must respond with ONLY a valid JSON object (no markdown, no code blocks, no 
   "relatedTopics": ["topic1", "topic2"]
 }
 
+CRITICAL JSON FORMATTING RULES:
+- Respond with ONLY valid JSON, no other text before or after
+- All strings must be properly escaped (use \\" for quotes inside strings)
+- No unescaped newlines in string values (use \\n if needed)
+- All quotes must be properly closed
+- No trailing commas
+- Ensure all braces and brackets are properly closed
+- Double-check that your JSON is valid before responding
+
 Important:
-- Respond with ONLY valid JSON, no other text
 - Provide 1-3 counter-arguments (focus on quality over quantity)
 - Strength should be 1-10 (10 = strongest possible counter-argument)
 - Confidence should be 0-1 (1 = very confident in the counter-argument)
 - Evidence should be specific, verifiable points when possible
-- Be intellectually honest - if the claim is well-supported, acknowledge that`;
+- Be intellectually honest - if the claim is well-supported, acknowledge that
+- Escape all special characters in strings properly (quotes, newlines, etc.)`;
 
   return prompt;
 }
