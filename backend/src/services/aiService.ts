@@ -10,15 +10,21 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createHash } from 'crypto';
 import { searchClaimSources, searchCounterArgumentSources } from '../utils/searchSources';
 
-// Initialize Google Generative AI client
-// Supports both GOOGLE_API_KEY and GEMINI_API_KEY environment variables
-const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-if (!apiKey) {
-  throw new Error(
-    'GOOGLE_API_KEY or GEMINI_API_KEY must be set in environment variables'
-  );
+// Initialize Google Generative AI client lazily
+let genAIInstance: GoogleGenerativeAI | null = null;
+
+function getGenAI(): GoogleGenerativeAI {
+  if (!genAIInstance) {
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        'GOOGLE_API_KEY or GEMINI_API_KEY must be set in environment variables'
+      );
+    }
+    genAIInstance = new GoogleGenerativeAI(apiKey);
+  }
+  return genAIInstance;
 }
-const genAI = new GoogleGenerativeAI(apiKey);
 
 /**
  * Request interface for steelman argument generation
@@ -95,29 +101,29 @@ function repairJson(jsonString: string): string {
   let result = '';
   let inString = false;
   let escapeNext = false;
-  
+
   for (let i = 0; i < repaired.length; i++) {
     const char = repaired[i];
     const nextChar = i < repaired.length - 1 ? repaired[i + 1] : null;
-    
+
     if (escapeNext) {
       result += char;
       escapeNext = false;
       continue;
     }
-    
+
     if (char === '\\') {
       result += char;
       escapeNext = true;
       continue;
     }
-    
+
     if (char === '"') {
       inString = !inString;
       result += char;
       continue;
     }
-    
+
     // If we're in a string and encounter structural characters, close the string
     // This handles unterminated strings that extend beyond where they should
     if (inString) {
@@ -128,7 +134,7 @@ function repairJson(jsonString: string): string {
         inString = false;
         continue; // Skip the newline as it's not valid in JSON strings
       }
-      
+
       // If we see a colon, comma, brace, or bracket after whitespace, we might need to close
       // But be careful - these could be inside the string content
       // Only close if we see a pattern like: "text : or "text , or "text }
@@ -137,8 +143,8 @@ function repairJson(jsonString: string): string {
         // If previous char is a quote (we just closed), don't do anything
         if (prevChar === '"') {
           // Already handled
-        } else if ((char === ':' || char === ',' || char === '}' || char === ']') && 
-                   /\s/.test(prevChar)) {
+        } else if ((char === ':' || char === ',' || char === '}' || char === ']') &&
+          /\s/.test(prevChar)) {
           // We have whitespace followed by structural char - likely end of string
           // Look backwards to find if we're still in a string that should be closed
           let lookBack = i - 1;
@@ -158,15 +164,15 @@ function repairJson(jsonString: string): string {
         }
       }
     }
-    
+
     result += char;
   }
-  
+
   // If we ended while still in a string, close it
   if (inString) {
     result += '"';
   }
-  
+
   repaired = result;
 
   // Count braces to check balance (only count braces outside strings)
@@ -176,25 +182,25 @@ function repairJson(jsonString: string): string {
   let closeBrackets = 0;
   inString = false;
   escapeNext = false;
-  
+
   for (let i = 0; i < repaired.length; i++) {
     const char = repaired[i];
-    
+
     if (escapeNext) {
       escapeNext = false;
       continue;
     }
-    
+
     if (char === '\\') {
       escapeNext = true;
       continue;
     }
-    
+
     if (char === '"') {
       inString = !inString;
       continue;
     }
-    
+
     if (!inString) {
       if (char === '{') openBraces++;
       else if (char === '}') closeBraces++;
@@ -239,11 +245,11 @@ function aggressivelyRepairStrings(jsonString: string): string {
   let charsSinceQuote = 0;
   let stringStart = -1;
   let stringContent = '';
-  
+
   for (let i = 0; i < jsonString.length; i++) {
     const char = jsonString[i];
     const nextChar = i < jsonString.length - 1 ? jsonString[i + 1] : null;
-    
+
     if (escapeNext) {
       result += char;
       escapeNext = false;
@@ -253,7 +259,7 @@ function aggressivelyRepairStrings(jsonString: string): string {
       }
       continue;
     }
-    
+
     if (char === '\\') {
       result += char;
       escapeNext = true;
@@ -263,7 +269,7 @@ function aggressivelyRepairStrings(jsonString: string): string {
       }
       continue;
     }
-    
+
     if (char === '"') {
       if (inString) {
         // Closing quote - check if we have a URL that might need special handling
@@ -281,11 +287,11 @@ function aggressivelyRepairStrings(jsonString: string): string {
       result += char;
       continue;
     }
-    
+
     if (inString) {
       charsSinceQuote++;
       stringContent += char;
-      
+
       // If we hit an unescaped newline, close the string (newlines must be escaped in JSON strings)
       if (char === '\n' || char === '\r') {
         result += '"';
@@ -296,24 +302,24 @@ function aggressivelyRepairStrings(jsonString: string): string {
         // Skip the newline as it's not valid in JSON strings
         continue;
       }
-      
+
       // Special handling for URLs: if we detect a URL pattern and then see structural chars,
       // the URL might have ended without a closing quote
       if (looksLikeUrl(stringContent)) {
         // We're building a URL - be careful about when to close it
         // URLs can contain many special chars, so we need to be smart
-        
+
         // If we see whitespace or structural chars after what looks like a complete URL, close it
         if (/\s/.test(char)) {
           // Look ahead to see what comes after whitespace
           let j = i + 1;
           while (j < jsonString.length && /\s/.test(jsonString[j])) j++;
-          
+
           if (j < jsonString.length) {
             const afterWhitespace = jsonString[j];
             // If we see structural characters, close the URL string
-            if (afterWhitespace === ',' || afterWhitespace === '}' || afterWhitespace === ']' || 
-                afterWhitespace === '"' || (afterWhitespace === ':' && j > i + 3)) {
+            if (afterWhitespace === ',' || afterWhitespace === '}' || afterWhitespace === ']' ||
+              afterWhitespace === '"' || (afterWhitespace === ':' && j > i + 3)) {
               result += '"';
               inString = false;
               charsSinceQuote = 0;
@@ -324,10 +330,10 @@ function aggressivelyRepairStrings(jsonString: string): string {
             }
           }
         }
-        
+
         // If we see a quote-like character that might indicate end of URL (rare but possible)
         // Actually, don't do this - quotes in URLs should be escaped
-        
+
         // If URL is getting very long and we see structural chars, it might be malformed
         if (charsSinceQuote > 200 && (char === ',' || char === '}' || char === ']')) {
           // URL seems too long, might be malformed - close it
@@ -340,14 +346,14 @@ function aggressivelyRepairStrings(jsonString: string): string {
           continue;
         }
       }
-      
+
       // If we have substantial content and then see whitespace followed by structural chars,
       // it's likely the string should have ended
       if (charsSinceQuote > 10 && /\s/.test(char) && !looksLikeUrl(stringContent)) {
         // Look ahead to see what comes after whitespace
         let j = i + 1;
         while (j < jsonString.length && /\s/.test(jsonString[j])) j++;
-        
+
         if (j < jsonString.length) {
           const afterWhitespace = jsonString[j];
           // If we see structural characters that typically follow string values, close the string
@@ -372,18 +378,18 @@ function aggressivelyRepairStrings(jsonString: string): string {
           }
         }
       }
-      
+
       result += char;
     } else {
       result += char;
     }
   }
-  
+
   // Close any remaining unterminated strings at the end
   if (inString) {
     result += '"';
   }
-  
+
   return result;
 }
 
@@ -398,31 +404,31 @@ function extractValidJson(content: string): string | null {
   // Strategy 1: Find JSON object boundaries
   const jsonStart = content.indexOf('{');
   if (jsonStart === -1) return null;
-  
+
   // Try to find matching closing brace
   let braceCount = 0;
   let inString = false;
   let escapeNext = false;
   let jsonEnd = -1;
-  
+
   for (let i = jsonStart; i < content.length; i++) {
     const char = content[i];
-    
+
     if (escapeNext) {
       escapeNext = false;
       continue;
     }
-    
+
     if (char === '\\') {
       escapeNext = true;
       continue;
     }
-    
+
     if (char === '"') {
       inString = !inString;
       continue;
     }
-    
+
     if (!inString) {
       if (char === '{') {
         braceCount++;
@@ -435,12 +441,12 @@ function extractValidJson(content: string): string | null {
       }
     }
   }
-  
+
   // If we found a complete JSON object, return it
   if (jsonEnd !== -1 && jsonEnd > jsonStart) {
     return content.substring(jsonStart, jsonEnd + 1);
   }
-  
+
   // Strategy 2: Try to find last complete JSON object
   const lastBrace = content.lastIndexOf('}');
   if (lastBrace !== -1 && lastBrace > jsonStart) {
@@ -453,7 +459,7 @@ function extractValidJson(content: string): string | null {
       // Continue to repair attempt
     }
   }
-  
+
   // Strategy 3: Return the content from first brace onwards (will be repaired)
   return content.substring(jsonStart);
 }
@@ -491,7 +497,7 @@ export async function generateSteelmanArgument(
 
   try {
     // Initialize Gemini model with configuration
-    const model = genAI.getGenerativeModel({
+    const model = getGenAI().getGenerativeModel({
       model: modelName,
       generationConfig: {
         temperature: 0.7, // Balanced creativity/consistency
@@ -544,7 +550,7 @@ export async function generateSteelmanArgument(
             const end = Math.min(cleanedContent.length, pos + 100);
             const context = cleanedContent.substring(start, end);
             console.warn('[AI Service] Error context (position', pos, '):', context);
-            
+
             // Check if error is near a URL pattern
             if (/https?:\/\//i.test(context)) {
               console.warn('[AI Service] Error appears to be near a URL - this may be an unterminated URL string');
@@ -877,7 +883,7 @@ Respond with valid JSON only:
 }`;
 
   try {
-    const model = genAI.getGenerativeModel({
+    const model = getGenAI().getGenerativeModel({
       model: modelName,
       generationConfig: {
         temperature: 0.3, // Lower temperature for analysis
