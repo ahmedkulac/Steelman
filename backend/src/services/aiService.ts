@@ -346,3 +346,119 @@ Important:
 
   return prompt;
 }
+
+/**
+ * Article Analysis Types
+ */
+export interface ArticleAnalysisRequest {
+  title: string;
+  content: string; // Extracted article content
+  url?: string;
+}
+
+interface AnalyzedClaim {
+  claim: string;
+  quote: string; // Original quote from article
+  counterArgument: string;
+  reasoning: string;
+  source?: string; // Optional source URL
+  strength: number; // 1-10
+}
+
+export interface ArticleAnalysisResponse {
+  summary: string;
+  claims: AnalyzedClaim[];
+  biasScore: number; // 1-10 (1=neutral, 10=highly biased)
+  biasAnalysis: string;
+  processingTime: number;
+}
+
+/**
+ * Analyze an article to find controversial claims and generate counter-arguments
+ */
+export async function analyzeArticle(
+  request: ArticleAnalysisRequest
+): Promise<ArticleAnalysisResponse> {
+  const startTime = Date.now();
+
+  // Validate API key
+  const apiKey = 'AIzaSyAUUiKmrSVckd9jeBp6plG4rvxjfuuYgUY';
+  if (!apiKey) {
+    throw new Error('API Key not configured');
+  }
+
+  const modelName = process.env.AI_MODEL || 'gemini-2.5-flash';
+
+  // Truncate content if too long (approx 25k chars/tokens limit safety)
+  // Gemini 1.5/2.0 handle large context, but let's be safe
+  const contentToAnalyze = request.content.length > 50000
+    ? request.content.substring(0, 50000) + '...[truncated]'
+    : request.content;
+
+  const prompt = `Analyze this article and identify controversial or debatable claims. For each claim, provide a steelman counter-argument.
+
+Article Title: "${request.title}"
+Content:
+${contentToAnalyze}
+
+Instructions:
+1. Summarize the article in 2-3 sentences.
+2. Identify 3-5 major controversial or debatable claims made in the text.
+3. For each claim:
+   - Extract the exact quote.
+   - Generate a strong steelman counter-argument.
+   - Explain the reasoning.
+   - Rate the strength of the counter-argument (1-10).
+4. Assess the overall bias of the article (1-10, where 1=neutral/balanced, 10=highly biased/propaganda) and explain why.
+
+Respond with valid JSON only:
+{
+  "summary": "Article summary...",
+  "claims": [
+    {
+      "claim": "The claim being made",
+      "quote": "Exact quote from text",
+      "counterArgument": "Strong opposing view",
+      "reasoning": "Why this counter is valid",
+      "strength": 8
+    }
+  ],
+  "biasScore": 5,
+  "biasAnalysis": "Explanation of bias rating..."
+}`;
+
+  try {
+    const model = genAI.getGenerativeModel({
+      model: modelName,
+      generationConfig: {
+        temperature: 0.3, // Lower temperature for analysis
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // Parse JSON (reuse existing logic or simple parse if robust)
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      // Simple cleanup attempt
+      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      parsed = JSON.parse(cleanText);
+    }
+
+    return {
+      summary: parsed.summary || 'No summary available',
+      claims: parsed.claims || [],
+      biasScore: parsed.biasScore || 5,
+      biasAnalysis: parsed.biasAnalysis || 'No bias analysis available',
+      processingTime: Date.now() - startTime,
+    };
+  } catch (error) {
+    console.error('Article Analysis Error:', error);
+    throw new Error('Failed to analyze article');
+  }
+}
