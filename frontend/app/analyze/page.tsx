@@ -6,15 +6,29 @@ import Link from 'next/link';
 import CopyButton from '@/components/CopyButton';
 import SourcesList from '@/components/SourcesList';
 
+// Unified highlight interface
+interface HighlightItem {
+    type: 'claim' | 'fact';
+    index: number; // Index in the original array (claims or factChecks)
+    quote: string;
+    startChar: number; // For sorting
+}
+
 export default function AnalyzePage() {
     const [url, setUrl] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<AnalysisResult | null>(null);
-    const [activeClaimIndex, setActiveClaimIndex] = useState<number | null>(null);
 
-    // Refs for scrolling to cards
-    const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+    // Highlight State
+    const [activeHighlight, setActiveHighlight] = useState<HighlightItem | null>(null);
+    const [highlights, setHighlights] = useState<HighlightItem[]>([]);
+
+    // Refs
+    // We store refs to claim cards and fact check cards
+    // The key will be `${type}-${index}`
+    const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+    const articleTextRef = useRef<HTMLDivElement>(null);
 
     // Check for result from sessionStorage (redirected from ClaimInput)
     useEffect(() => {
@@ -33,15 +47,99 @@ export default function AnalyzePage() {
         }
     }, []);
 
-    // Scroll to card when activeClaimIndex changes
+    // Calculate highlights when result changes
     useEffect(() => {
-        if (activeClaimIndex !== null && cardRefs.current[activeClaimIndex]) {
-            cardRefs.current[activeClaimIndex]?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
+        if (result) {
+            const newHighlights: HighlightItem[] = [];
+
+            // Add claims (Type: 'claim')
+            result.analysis.claims.forEach((claim, index) => {
+                if (!claim.quote) return;
+                // Find all occurrences or just the first? 
+                // AI usually quotes unique strings. We'll find the first one for now.
+                const quoteIndex = result.content.indexOf(claim.quote);
+                if (quoteIndex !== -1) {
+                    newHighlights.push({
+                        type: 'claim',
+                        index: index,
+                        quote: claim.quote,
+                        startChar: quoteIndex
+                    });
+                }
             });
+
+            // Add fact checks (Type: 'fact')
+            if (result.analysis.factChecks) {
+                result.analysis.factChecks.forEach((check, index) => {
+                    if (!check.quote) return;
+                    const quoteIndex = result.content.indexOf(check.quote);
+                    if (quoteIndex !== -1) {
+                        // Check if this overlaps with an existing claim highlight?
+                        // For now, we'll allow overlaps but the sorting might handle nesting poorly with the simple split.
+                        // We will rely on simple replacement for now.
+                        newHighlights.push({
+                            type: 'fact',
+                            index: index,
+                            quote: check.quote,
+                            startChar: quoteIndex
+                        });
+                    }
+                });
+            }
+
+            // Sort by position
+            newHighlights.sort((a, b) => a.startChar - b.startChar);
+            setHighlights(newHighlights);
         }
-    }, [activeClaimIndex]);
+    }, [result]);
+
+    const scrollToHighlight = (highlight: HighlightItem) => {
+        setActiveHighlight(highlight);
+
+        // Find the card ref
+        const key = `${highlight.type}-${highlight.index}`;
+        const cardEl = cardRefs.current.get(key);
+
+        if (cardEl) {
+            cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Add momentary flash effect
+            cardEl.classList.add('ring-4', highlight.type === 'claim' ? 'ring-yellow-400' : 'ring-blue-400');
+            setTimeout(() => {
+                cardEl.classList.remove('ring-4', 'ring-yellow-400', 'ring-blue-400');
+            }, 1500);
+        }
+
+        // Also scroll the text highlight into view if needed
+        const highlightId = `highlight-${highlight.type}-${highlight.index}`;
+        const highlightEl = document.getElementById(highlightId);
+        if (highlightEl) {
+            highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
+
+    const navigateHighlight = (direction: 'next' | 'prev') => {
+        if (highlights.length === 0) return;
+
+        let nextIndex = 0;
+        if (activeHighlight) {
+            const currentHighlightIndex = highlights.findIndex(
+                h => h.type === activeHighlight.type && h.index === activeHighlight.index
+            );
+
+            if (currentHighlightIndex !== -1) {
+                if (direction === 'next') {
+                    nextIndex = currentHighlightIndex + 1;
+                    if (nextIndex >= highlights.length) nextIndex = 0; // Loop to start
+                } else {
+                    nextIndex = currentHighlightIndex - 1;
+                    if (nextIndex < 0) nextIndex = highlights.length - 1; // Loop to end
+                }
+            }
+        }
+
+        scrollToHighlight(highlights[nextIndex]);
+    };
 
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,15 +148,14 @@ export default function AnalyzePage() {
         setLoading(true);
         setError(null);
         setResult(null);
-        setActiveClaimIndex(null);
+        setActiveHighlight(null);
+        setHighlights([]);
 
         try {
             const analysisResult = await analyzeUrl(url);
             setResult(analysisResult);
         } catch (err: any) {
             console.error('Analysis failed:', err);
-
-            // Extract error details from response
             const errorData = err.response?.data;
             let errorMessage = errorData?.error ||
                 errorData?.details ||
@@ -66,11 +163,9 @@ export default function AnalyzePage() {
                 err.message ||
                 'Failed to analyze content. Please check the URL and try again.';
 
-            // Add suggestion if available
             if (errorData?.suggestion) {
                 errorMessage += ` ${errorData.suggestion}`;
             }
-
             setError(errorMessage);
         } finally {
             setLoading(false);
@@ -78,7 +173,7 @@ export default function AnalyzePage() {
     };
 
     /**
-     * Renders text with highlighted claims
+     * Renders text with highlights
      */
     const renderHighlightedContent = () => {
         if (!result) return null;
@@ -87,58 +182,108 @@ export default function AnalyzePage() {
         const paragraphs = content.split('\n').filter(line => line.trim().length > 0);
 
         return (
-            <div className="prose dark:prose-invert max-w-none text-base leading-relaxed text-slate-800 dark:text-slate-300">
+            <div ref={articleTextRef} className="prose dark:prose-invert max-w-none text-base leading-relaxed text-slate-800 dark:text-slate-300 relative">
+                {/* Navigation Floating Controls */}
+                {highlights.length > 0 && (
+                    <div className="sticky top-4 z-10 flex justify-end mb-2 pointer-events-none">
+                        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur shadow-lg rounded-full px-4 py-2 border border-slate-200 dark:border-slate-700 flex items-center gap-3 pointer-events-auto transition-all transform hover:scale-105">
+                            <button
+                                onClick={() => navigateHighlight('prev')}
+                                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-600 dark:text-slate-300"
+                                title="Previous Highlight"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                                {activeHighlight
+                                    ? `${highlights.findIndex(h => h.type === activeHighlight.type && h.index === activeHighlight.index) + 1} / ${highlights.length}`
+                                    : `${highlights.length} highlights`
+                                }
+                            </span>
+                            <button
+                                onClick={() => navigateHighlight('next')}
+                                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-600 dark:text-slate-300"
+                                title="Next Highlight"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {paragraphs.map((paragraph, pIndex) => {
-                    // Check if this paragraph contains any claim quotes
-                    let paragraphContent: React.ReactNode[] = [paragraph];
+                    // Find highlights that exist in this paragraph
+                    // We only look for exact string matches
+                    const paragraphHighlights = highlights.filter(h => paragraph.includes(h.quote));
 
-                    // We need to process claims to find matches in this paragraph
-                    // This is a simplified approach: we split the paragraph by the quote if found
-                    // Note: This works best if quotes are unique within the paragraph
+                    if (paragraphHighlights.length === 0) {
+                        return (
+                            <p key={pIndex} className="mb-4">
+                                {paragraph}
+                            </p>
+                        );
+                    }
 
-                    // Sort claims by length (longest first) to avoid partial matches interfering
-                    const claimsInParagraph = result.analysis.claims
-                        .map((claim, index) => ({ claim, index }))
-                        .filter(({ claim }) => paragraph.includes(claim.quote))
-                        .sort((a, b) => b.claim.quote.length - a.claim.quote.length);
+                    // Sort highlights by their position in THIS paragraph
+                    // This is robust against the global startChar causing issues if paragraph text matches appeared multiple times globally
+                    const sortedLocalHighlights = [...paragraphHighlights].sort((a, b) => {
+                        return paragraph.indexOf(a.quote) - paragraph.indexOf(b.quote);
+                    });
 
-                    if (claimsInParagraph.length > 0) {
-                        // For simplicity in this iteration, we only highlight the first matching claim in the paragraph
-                        // to avoid complex overlapping or nested splits. 
-                        // A more robust solution would be needed for multiple quotes in one paragraph.
-                        const { claim, index } = claimsInParagraph[0];
-                        const parts = paragraph.split(claim.quote);
+                    // Build the paragraph content
+                    const pContent: React.ReactNode[] = [];
+                    let cursor = 0;
 
-                        // Reassemble with highlight
-                        // Note: split might return more than 2 parts if quote appears multiple times
-                        if (parts.length > 1) {
-                            return (
-                                <p key={pIndex} className="mb-4 text-slate-800 dark:text-slate-300 leading-relaxed">
-                                    {parts.map((part, i) => (
-                                        <React.Fragment key={i}>
-                                            {part}
-                                            {i < parts.length - 1 && (
-                                                <span
-                                                    className={`cursor-pointer transition-colors duration-200 px-1 rounded ${activeClaimIndex === index
-                                                        ? 'bg-yellow-300 dark:bg-yellow-600 text-black font-medium'
-                                                        : 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-200 dark:hover:bg-yellow-800'
-                                                        }`}
-                                                    onClick={() => setActiveClaimIndex(index === activeClaimIndex ? null : index)}
-                                                    title="Click to see counter-argument"
-                                                >
-                                                    {claim.quote}
-                                                </span>
-                                            )}
-                                        </React.Fragment>
-                                    ))}
-                                </p>
+                    // Iterate through sorted highlights and slice the paragraph
+                    sortedLocalHighlights.forEach((h, hIdx) => {
+                        // Find the quote starting from current cursor to avoid backtracking
+                        const start = paragraph.indexOf(h.quote, cursor);
+
+                        // Only process if found and not overlapping with previous (valid start >= cursor)
+                        if (start !== -1 && start >= cursor) {
+                            // Text before the highlight
+                            if (start > cursor) {
+                                pContent.push(<span key={`text-${hIdx}`}>{paragraph.substring(cursor, start)}</span>);
+                            }
+
+                            // The highlight itself
+                            const isActive = activeHighlight?.type === h.type && activeHighlight?.index === h.index;
+
+                            let bgClass = '';
+                            if (h.type === 'claim') {
+                                bgClass = isActive
+                                    ? 'bg-yellow-300 dark:bg-yellow-600 text-black font-medium ring-2 ring-yellow-500/50'
+                                    : 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-200 dark:hover:bg-yellow-800 text-slate-900 dark:text-slate-100';
+                            } else {
+                                bgClass = isActive
+                                    ? 'bg-blue-300 dark:bg-blue-600 text-black font-medium ring-2 ring-blue-500/50'
+                                    : 'bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800 text-slate-900 dark:text-slate-100';
+                            }
+
+                            pContent.push(
+                                <span
+                                    key={`highlight-${h.type}-${h.index}-${hIdx}`}
+                                    id={`highlight-${h.type}-${h.index}`}
+                                    className={`cursor-pointer transition-all duration-200 px-1 rounded mx-0.5 ${bgClass}`}
+                                    onClick={() => scrollToHighlight(h)}
+                                    title={h.type === 'claim' ? "View Counter-Argument" : "View Fact Check"}
+                                >
+                                    {h.quote}
+                                </span>
                             );
+
+                            cursor = start + h.quote.length;
                         }
+                    });
+
+                    // Remaining text after last highlight
+                    if (cursor < paragraph.length) {
+                        pContent.push(<span key="text-end">{paragraph.substring(cursor)}</span>);
                     }
 
                     return (
-                        <p key={pIndex} className="mb-4 text-slate-800 dark:text-slate-300 leading-relaxed">
-                            {paragraph}
+                        <p key={pIndex} className="mb-4">
+                            {pContent}
                         </p>
                     );
                 })}
@@ -208,7 +353,11 @@ export default function AnalyzePage() {
                             </Link>
 
                             <button
-                                onClick={() => setResult(null)}
+                                onClick={() => {
+                                    setResult(null);
+                                    setActiveHighlight(null);
+                                    setHighlights([]);
+                                }}
                                 className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline flex items-center gap-2 transition-colors"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -258,8 +407,6 @@ export default function AnalyzePage() {
                                     <p className="text-slate-700 dark:text-slate-300 mb-4">
                                         {result.analysis.summary}
                                     </p>
-
-
                                 </div>
 
                                 {/* Fact Checks Section */}
@@ -270,25 +417,41 @@ export default function AnalyzePage() {
                                             Fact Checks
                                         </h3>
                                         <div className="space-y-4">
-                                            {result.analysis.factChecks.map((check, index) => (
-                                                <div key={index} className="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-4 border border-blue-100 dark:border-blue-800">
-                                                    <p className="text-xs font-bold uppercase tracking-wide mb-1 text-slate-500 dark:text-slate-400">
-                                                        Checking: "{check.statement}"
-                                                    </p>
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${check.verdict === 'verified' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                                                            check.verdict === 'disputed' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
-                                                                check.verdict === 'misleading' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
-                                                                    'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-                                                            }`}>
-                                                            {check.verdict.replace('_', ' ')}
-                                                        </span>
+                                            {result.analysis.factChecks.map((check, index) => {
+                                                const isActive = activeHighlight?.type === 'fact' && activeHighlight.index === index;
+                                                return (
+                                                    <div
+                                                        key={index}
+                                                        ref={(el) => { if (el) cardRefs.current.set(`fact-${index}`, el); }}
+                                                        className={`rounded-lg p-4 border transition-all duration-300 ${isActive
+                                                                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 ring-2 ring-blue-400/50'
+                                                                : 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800'
+                                                            }`}
+                                                    >
+                                                        <p className="text-xs font-bold uppercase tracking-wide mb-1 text-slate-500 dark:text-slate-400">
+                                                            Checking: "{check.statement}"
+                                                        </p>
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${check.verdict === 'verified' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                                                    check.verdict === 'disputed' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                                                                        check.verdict === 'misleading' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
+                                                                            'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                                                                }`}>
+                                                                {check.verdict.replace('_', ' ')}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm text-slate-700 dark:text-slate-300">
+                                                            {check.reasoning}
+                                                        </p>
+
+                                                        {check.sources && check.sources.length > 0 && (
+                                                            <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+                                                                <SourcesList sources={check.sources} title="Verification Sources" />
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <p className="text-sm text-slate-700 dark:text-slate-300">
-                                                        {check.reasoning}
-                                                    </p>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -300,56 +463,59 @@ export default function AnalyzePage() {
                                     </h3>
 
                                     <div className="space-y-4">
-                                        {result.analysis.claims.map((claim, index) => (
-                                            <div
-                                                key={index}
-                                                ref={(el) => { cardRefs.current[index] = el; }}
-                                                className={`rounded-lg shadow-md p-5 border-l-4 transition-all duration-300 ${activeClaimIndex === index
-                                                    ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-yellow-600 ring-2 ring-yellow-400/50'
-                                                    : 'bg-white dark:bg-gray-900 border-l-yellow-400 dark:border-l-yellow-400 border-y border-r border-gray-200 dark:border-gray-800'
-                                                    }`}
-                                            >
-                                                <div className="mb-3">
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
-                                                            Claim From Article
-                                                        </p>
-                                                        <CopyButton text={claim.quote} size="sm" />
-                                                    </div>
-                                                    <blockquote className="italic text-slate-600 dark:text-slate-400 border-l-2 border-slate-300 dark:border-slate-600 pl-3 py-1 my-2 bg-slate-50 dark:bg-slate-900/50 rounded-r text-sm">
-                                                        "{claim.quote}"
-                                                    </blockquote>
-                                                </div>
-
-                                                <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="w-6 h-6 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                                                {index + 1}
-                                                            </span>
-                                                            <p className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
-                                                                Counter-Argument
+                                        {result.analysis.claims.map((claim, index) => {
+                                            const isActive = activeHighlight?.type === 'claim' && activeHighlight.index === index;
+                                            return (
+                                                <div
+                                                    key={index}
+                                                    ref={(el) => { if (el) cardRefs.current.set(`claim-${index}`, el); }}
+                                                    className={`rounded-lg shadow-md p-5 border-l-4 transition-all duration-300 ${isActive
+                                                            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-yellow-600 ring-2 ring-yellow-400/50'
+                                                            : 'bg-white dark:bg-gray-900 border-l-yellow-400 dark:border-l-yellow-400 border-y border-r border-gray-200 dark:border-gray-800'
+                                                        }`}
+                                                >
+                                                    <div className="mb-3">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                                                                Claim From Article
                                                             </p>
+                                                            <CopyButton text={claim.quote} size="sm" />
                                                         </div>
-                                                        <CopyButton text={claim.counterArgument} size="sm" />
+                                                        <blockquote className="italic text-slate-600 dark:text-slate-400 border-l-2 border-slate-300 dark:border-slate-600 pl-3 py-1 my-2 bg-slate-50 dark:bg-slate-900/50 rounded-r text-sm">
+                                                            "{claim.quote}"
+                                                        </blockquote>
                                                     </div>
-                                                    <p className="text-base font-semibold text-slate-900 dark:text-slate-100 leading-relaxed mb-3">
-                                                        {claim.counterArgument}
-                                                    </p>
-                                                    {claim.reasoning && (
-                                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-3 border-l-2 border-blue-300 dark:border-blue-600">
-                                                            {claim.reasoning}
-                                                        </p>
-                                                    )}
 
-                                                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
-                                                        {claim.sources && claim.sources.length > 0 && (
-                                                            <SourcesList sources={claim.sources} title="Sources" />
+                                                    <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-6 h-6 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                                                    {index + 1}
+                                                                </span>
+                                                                <p className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
+                                                                    Counter-Argument
+                                                                </p>
+                                                            </div>
+                                                            <CopyButton text={claim.counterArgument} size="sm" />
+                                                        </div>
+                                                        <p className="text-base font-semibold text-slate-900 dark:text-slate-100 leading-relaxed mb-3">
+                                                            {claim.counterArgument}
+                                                        </p>
+                                                        {claim.reasoning && (
+                                                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-3 border-l-2 border-blue-300 dark:border-blue-600">
+                                                                {claim.reasoning}
+                                                            </p>
                                                         )}
+
+                                                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                                                            {claim.sources && claim.sources.length > 0 && (
+                                                                <SourcesList sources={claim.sources} title="Sources" />
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
