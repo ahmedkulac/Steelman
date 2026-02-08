@@ -1,43 +1,22 @@
-
 'use client';
 
-import React, { useState } from 'react';
-import { analyzeUrl } from '@/lib/api/analyze';
-import Link from 'next/link';
+import React, { useState, useEffect, useRef } from 'react';
+import { analyzeUrl, AnalysisResult, AnalyzedClaim, FactCheck } from '@/lib/api/analyze';
 import CopyButton from '@/components/CopyButton';
-
-interface AnalyzedClaim {
-    claim: string;
-    quote: string;
-    counterArgument: string;
-    reasoning: string;
-    source?: string;
-    strength: number;
-}
-
-interface AnalysisResult {
-    title: string;
-    byline?: string;
-    author?: string;
-    platform?: string;
-    excerpt?: string;
-    content: string;
-    analysis: {
-        summary: string;
-        claims: AnalyzedClaim[];
-        biasScore: number;
-        biasAnalysis: string;
-    };
-}
+import SourcesList from '@/components/SourcesList';
 
 export default function AnalyzePage() {
     const [url, setUrl] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<AnalysisResult | null>(null);
+    const [activeClaimIndex, setActiveClaimIndex] = useState<number | null>(null);
+
+    // Refs for scrolling to cards
+    const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     // Check for result from sessionStorage (redirected from ClaimInput)
-    React.useEffect(() => {
+    useEffect(() => {
         if (typeof window !== 'undefined') {
             const storedResult = sessionStorage.getItem('analyzeResult');
             if (storedResult) {
@@ -53,6 +32,16 @@ export default function AnalyzePage() {
         }
     }, []);
 
+    // Scroll to card when activeClaimIndex changes
+    useEffect(() => {
+        if (activeClaimIndex !== null && cardRefs.current[activeClaimIndex]) {
+            cardRefs.current[activeClaimIndex]?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+            });
+        }
+    }, [activeClaimIndex]);
+
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!url) return;
@@ -60,6 +49,7 @@ export default function AnalyzePage() {
         setLoading(true);
         setError(null);
         setResult(null);
+        setActiveClaimIndex(null);
 
         try {
             const analysisResult = await analyzeUrl(url);
@@ -84,6 +74,75 @@ export default function AnalyzePage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    /**
+     * Renders text with highlighted claims
+     */
+    const renderHighlightedContent = () => {
+        if (!result) return null;
+
+        let content = result.content;
+        const paragraphs = content.split('\n').filter(line => line.trim().length > 0);
+
+        return (
+            <div className="prose dark:prose-invert max-w-none text-base leading-relaxed text-slate-800 dark:text-slate-300">
+                {paragraphs.map((paragraph, pIndex) => {
+                    // Check if this paragraph contains any claim quotes
+                    let paragraphContent: React.ReactNode[] = [paragraph];
+
+                    // We need to process claims to find matches in this paragraph
+                    // This is a simplified approach: we split the paragraph by the quote if found
+                    // Note: This works best if quotes are unique within the paragraph
+
+                    // Sort claims by length (longest first) to avoid partial matches interfering
+                    const claimsInParagraph = result.analysis.claims
+                        .map((claim, index) => ({ claim, index }))
+                        .filter(({ claim }) => paragraph.includes(claim.quote))
+                        .sort((a, b) => b.claim.quote.length - a.claim.quote.length);
+
+                    if (claimsInParagraph.length > 0) {
+                        // For simplicity in this iteration, we only highlight the first matching claim in the paragraph
+                        // to avoid complex overlapping or nested splits. 
+                        // A more robust solution would be needed for multiple quotes in one paragraph.
+                        const { claim, index } = claimsInParagraph[0];
+                        const parts = paragraph.split(claim.quote);
+
+                        // Reassemble with highlight
+                        // Note: split might return more than 2 parts if quote appears multiple times
+                        if (parts.length > 1) {
+                            return (
+                                <p key={pIndex} className="mb-4 text-slate-800 dark:text-slate-300 leading-relaxed">
+                                    {parts.map((part, i) => (
+                                        <React.Fragment key={i}>
+                                            {part}
+                                            {i < parts.length - 1 && (
+                                                <span
+                                                    className={`cursor-pointer transition-colors duration-200 px-1 rounded ${activeClaimIndex === index
+                                                            ? 'bg-yellow-300 dark:bg-yellow-600 text-black font-medium'
+                                                            : 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-200 dark:hover:bg-yellow-800'
+                                                        }`}
+                                                    onClick={() => setActiveClaimIndex(index === activeClaimIndex ? null : index)}
+                                                    title="Click to see counter-argument"
+                                                >
+                                                    {claim.quote}
+                                                </span>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </p>
+                            );
+                        }
+                    }
+
+                    return (
+                        <p key={pIndex} className="mb-4 text-slate-800 dark:text-slate-300 leading-relaxed">
+                            {paragraph}
+                        </p>
+                    );
+                })}
+            </div>
+        );
     };
 
     return (
@@ -168,13 +227,7 @@ export default function AnalyzePage() {
                                         )}
                                     </div>
                                 </div>
-                                <div className="prose dark:prose-invert max-w-none text-base leading-relaxed text-slate-800 dark:text-slate-300">
-                                    {result.content.split('\n').filter(line => line.trim().length > 0).map((paragraph, index) => (
-                                        <p key={index} className="mb-4 text-slate-800 dark:text-slate-300 leading-relaxed">
-                                            {paragraph.trim()}
-                                        </p>
-                                    ))}
-                                </div>
+                                {renderHighlightedContent()}
                             </div>
 
                             {/* Right Column: Analysis */}
@@ -193,8 +246,60 @@ export default function AnalyzePage() {
                                         {result.analysis.summary}
                                     </p>
 
-
+                                    {/* Bias Score */}
+                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Potential Bias Score</span>
+                                            <span className={`text-sm font-bold ${result.analysis.biasScore <= 3 ? 'text-green-600 dark:text-green-400' :
+                                                    result.analysis.biasScore <= 6 ? 'text-yellow-600 dark:text-yellow-400' :
+                                                        'text-red-600 dark:text-red-400'
+                                                }`}>{result.analysis.biasScore}/10</span>
+                                        </div>
+                                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full ${result.analysis.biasScore <= 3 ? 'bg-green-500' :
+                                                        result.analysis.biasScore <= 6 ? 'bg-yellow-500' :
+                                                            'bg-red-500'
+                                                    }`}
+                                                style={{ width: `${result.analysis.biasScore * 10}%` }}
+                                            />
+                                        </div>
+                                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                            {result.analysis.biasAnalysis}
+                                        </p>
+                                    </div>
                                 </div>
+
+                                {/* Fact Checks Section */}
+                                {result.analysis.factChecks && result.analysis.factChecks.length > 0 && (
+                                    <div>
+                                        <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-100 flex items-center">
+                                            <span className="mr-2 text-blue-500">🔍</span>
+                                            Fact Checks
+                                        </h3>
+                                        <div className="space-y-4">
+                                            {result.analysis.factChecks.map((check, index) => (
+                                                <div key={index} className="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-4 border border-blue-100 dark:border-blue-800">
+                                                    <p className="text-xs font-bold uppercase tracking-wide mb-1 text-slate-500 dark:text-slate-400">
+                                                        Checking: "{check.statement}"
+                                                    </p>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${check.verdict === 'verified' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                                                check.verdict === 'disputed' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                                                                    check.verdict === 'misleading' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
+                                                                        'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                                                            }`}>
+                                                            {check.verdict.replace('_', ' ')}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-slate-700 dark:text-slate-300">
+                                                        {check.reasoning}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Claims & Counter-Arguments */}
                                 <div>
@@ -204,7 +309,14 @@ export default function AnalyzePage() {
 
                                     <div className="space-y-4">
                                         {result.analysis.claims.map((claim, index) => (
-                                            <div key={index} className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-5 border-l-4 border-l-yellow-400 dark:border-l-yellow-400 border-y border-r border-gray-200 dark:border-gray-800">
+                                            <div
+                                                key={index}
+                                                ref={(el) => { cardRefs.current[index] = el; }}
+                                                className={`rounded-lg shadow-md p-5 border-l-4 transition-all duration-300 ${activeClaimIndex === index
+                                                        ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-yellow-600 ring-2 ring-yellow-400/50'
+                                                        : 'bg-white dark:bg-gray-900 border-l-yellow-400 dark:border-l-yellow-400 border-y border-r border-gray-200 dark:border-gray-800'
+                                                    }`}
+                                            >
                                                 <div className="mb-3">
                                                     <div className="flex items-center justify-between mb-1">
                                                         <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
@@ -231,12 +343,9 @@ export default function AnalyzePage() {
                                                         {claim.reasoning}
                                                     </p>
 
-                                                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-
-                                                        {claim.source && (
-                                                            <span className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400">
-                                                                Source: {claim.source}
-                                                            </span>
+                                                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                                                        {claim.sources && claim.sources.length > 0 && (
+                                                            <SourcesList sources={claim.sources} title="Sources" />
                                                         )}
                                                     </div>
                                                 </div>

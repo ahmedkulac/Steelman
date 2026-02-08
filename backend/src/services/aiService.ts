@@ -864,13 +864,22 @@ interface AnalyzedClaim {
   quote: string; // Original quote from article
   counterArgument: string;
   reasoning: string;
-  source?: string; // Optional source URL
+  sources?: Array<{ title: string; url: string; snippet?: string }>; // Sources supporting counter-argument
   strength: number; // 1-10
+}
+
+interface FactCheck {
+  statement: string; // The specific statistic or factual claim
+  quote: string; // Exact quote
+  searchQuery: string; // Query to verify this fact
+  verdict: 'verified' | 'disputed' | 'misleading' | 'needs_context'; // AI's initial assessment
+  reasoning: string;
 }
 
 export interface ArticleAnalysisResponse {
   summary: string;
   claims: AnalyzedClaim[];
+  factChecks: FactCheck[];
   biasScore: number; // 1-10 (1=neutral, 10=highly biased)
   biasAnalysis: string;
   processingTime: number;
@@ -939,7 +948,15 @@ For each identified claim, generate a direct, evidence-based counter-argument de
 - Structure arguments to shift the reader's understanding
 - Rate the strength of your counter-argument (1-10) based on evidence and persuasive power
 
-STEP 4: BIAS ASSESSMENT
+STEP 4: FACT CHECKING
+Identify 2-4 specific statistics, numbers, or hard factual claims (not opinions) that should be verified.
+For each:
+- Extract the exact quote
+- Formulate a search query to verify it
+- Provide an initial verdict based on your knowledge (verified/disputed/misleading/needs_context)
+- Explain your reasoning
+
+STEP 5: BIAS ASSESSMENT
 Evaluate the article's bias using these criteria:
 - **Framing**: How are issues presented? What perspectives are emphasized or omitted?
 - **Source Selection**: Are sources diverse and credible, or one-sided?
@@ -967,12 +984,22 @@ RESPONSE FORMAT (valid JSON only, no markdown):
       "strength": 8
     }
   ],
+  "factChecks": [
+    {
+      "statement": "The specific statistic or factual claim",
+      "quote": "Exact quote",
+      "searchQuery": "Search query to verify this",
+      "verdict": "verified|disputed|misleading|needs_context",
+      "reasoning": "Why this needs checking or is disputed"
+    }
+  ],
   "biasScore": 6,
   "biasAnalysis": "Detailed explanation of bias assessment, including specific examples from the article (3-5 sentences)"
 }
 
 QUALITY REQUIREMENTS:
-- Identify 3-5 claims (prioritize the most significant/debatable ones)
+- Identify 3-5 major claims 
+- Identify 2-4 fact-check items (stats/numbers/hard facts)
 - Each counter-argument should be substantial and well-reasoned
 - Bias analysis should cite specific examples from the text
 - All JSON must be valid and properly formatted (escape quotes, no trailing commas, etc.)
@@ -1011,13 +1038,37 @@ Generate your analysis now as valid JSON only:`;
       parsed = JSON.parse(cleanText);
     }
 
-    return {
+    const analysisResponse: ArticleAnalysisResponse = {
       summary: parsed.summary || 'No summary available',
       claims: parsed.claims || [],
+      factChecks: parsed.factChecks || [],
       biasScore: parsed.biasScore || 5,
       biasAnalysis: parsed.biasAnalysis || 'No bias analysis available',
       processingTime: Date.now() - startTime,
     };
+
+    // Search for sources for each counter-argument
+    try {
+      const claimsWithSourcesPromises = analysisResponse.claims.map(async (claim) => {
+        // Search for sources supporting the counter-argument
+        const sources = await searchCounterArgumentSources(claim.counterArgument, claim.claim);
+        return {
+          ...claim,
+          sources: sources.map(s => ({
+            title: s.title,
+            url: s.url,
+            snippet: s.snippet
+          }))
+        };
+      });
+
+      analysisResponse.claims = await Promise.all(claimsWithSourcesPromises);
+    } catch (searchError) {
+      console.warn('[AI Service] Error searching for sources for article analysis:', searchError);
+      // Continue without sources
+    }
+
+    return analysisResponse;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[AI Service] Article Analysis Error:', errorMessage);
