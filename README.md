@@ -1,6 +1,8 @@
-# Fact Checker App
+# Steelman - Perspective Engine
 
-A hybrid web application (mobile-optimized) that helps users fact-check claims by generating steelman counter-arguments using AI. The app uses the steelman technique - presenting the strongest possible version of an opposing argument - to help users critically evaluate information.
+A modern web application that helps users fact-check claims by generating steelman counter-arguments using AI. The app uses the steelman technique - presenting the strongest possible version of an opposing argument - to help users critically evaluate information and change their perspectives through evidence-based counter-arguments.
+
+**Status:** ✅ Production Ready | **Version:** Final
 
 ## 🎯 Features
 
