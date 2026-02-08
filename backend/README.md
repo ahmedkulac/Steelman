@@ -73,12 +73,14 @@ NODE_ENV=development
 # Database (SQLite by default)
 DATABASE_URL="file:./dev.db"
 
-# Google Gemini API (required)
-GOOGLE_API_KEY=your-api-key-here
+# OpenRouter API (required)
+OPENROUTER_API_KEY=Sk-or-v1-e1bc52f5bdffc6ba167ec870ba0f9b752d56d04c8f53d1f952970872f59e1cd0
 
 # AI Configuration
-AI_MODEL=gemini-2.5-flash
+AI_MODEL=google/gemini-2.0-flash-001
 AI_MAX_TOKENS=2000
+SITE_URL=http://localhost:3000
+SITE_NAME=Steelman
 
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=3600000

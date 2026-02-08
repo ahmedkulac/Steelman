@@ -23,7 +23,7 @@ Fast reference for deploying to Vercel + Railway.
    ```
    NODE_ENV=production
    DATABASE_URL=${{Postgres.DATABASE_URL}}
-   GOOGLE_API_KEY=your-key
+   OPENROUTER_API_KEY=Sk-or-v1-e1bc52f5bdffc6ba167ec870ba0f9b752d56d04c8f53d1f952970872f59e1cd0
    PORT=5000
    ALLOWED_ORIGINS=http://localhost:3000
    ```

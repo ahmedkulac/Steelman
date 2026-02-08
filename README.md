@@ -6,31 +6,20 @@ A modern web application that helps users fact-check claims by generating steelm
 
 ## 🎯 Features
 
-- **AI-Powered Fact-Checking**: Uses Google Gemini AI to generate steelman counter-arguments
+- **AI-Powered Fact-Checking**: Uses OpenRouter API (Google Gemini) to generate steelman counter-arguments
 - **Mobile-First Design**: Optimized for mobile devices with responsive UI
 - **Real-Time Processing**: Asynchronous AI processing with status updates
 - **Multi-Tier Caching**: Redis + in-memory backend cache + frontend localStorage cache
 - **Rate Limiting**: Protects API usage and prevents abuse
-- **Free Tier Optimized**: Configured for Google Gemini free tier
+- **Article Analysis**: Analyze entire articles for claims and bias
 
 ## 🚀 Quick Start
 
 ### Quick Deploy (Recommended)
 
-**Frontend:** Vercel | **Backend:** Railway | **Database:** Supabase
+**Frontend:** Vercel | **Backend:** Railway | **Database:** PostgreSQL
 
-1. **Set up Supabase database:** [Quick Start Guide](./docs/SUPABASE_QUICK_START.md)
-2. **Deploy backend:** Railway with Supabase connection
-3. **Deploy frontend:** Vercel
-
-See [Supabase Setup Guide](./docs/SUPABASE_SETUP.md) for complete instructions.
-
-### Deploy to Vercel (Frontend)
-
-**One-click deploy:**
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/3Mis1Cs&root-directory=frontend)
-
-Or follow the [Vercel Deployment Guide](./docs/VERCEL_DEPLOYMENT.md)
+See [COMPLETE_DEPLOYMENT_GUIDE.md](./COMPLETE_DEPLOYMENT_GUIDE.md) for detailed deployment instructions, or [QUICK_DEPLOY.md](./QUICK_DEPLOY.md) for a quick reference checklist.
 
 ---
 
@@ -40,7 +29,7 @@ Or follow the [Vercel Deployment Guide](./docs/VERCEL_DEPLOYMENT.md)
 
 - Node.js 18+ 
 - npm or yarn
-- Google Gemini API key (free tier available)
+- OpenRouter API key (see [OPENROUTER_SETUP.md](./OPENROUTER_SETUP.md))
 
 ### Installation
 
@@ -71,7 +60,7 @@ chmod +x scripts/setup.sh
    **Backend:**
    ```bash
    cp backend/.env.example backend/.env
-   # Edit backend/.env and add your GOOGLE_API_KEY
+   # Edit backend/.env and add your OPENROUTER_API_KEY
    ```
    
    **Frontend:**
@@ -80,9 +69,9 @@ chmod +x scripts/setup.sh
    # Usually no changes needed unless backend runs on different port
    ```
 
-3. **Google API Key:**
-   - A shared API key is already in `backend/.env.example`
-   - Or get your own from: https://makersuite.google.com/app/apikey
+3. **OpenRouter API Key:**
+   - Your API key is already configured in `backend/.env.example`
+   - Or get your own from: https://openrouter.ai/keys
    - The setup script will copy it automatically
 
 4. **Generate Prisma client:**
@@ -121,7 +110,8 @@ chmod +x scripts/setup.sh
 - **TypeScript** - Type safety
 - **Prisma** - Database ORM
 - **SQLite** - Development database (no setup required!)
-- **Google Gemini API** - AI-powered counter-arguments
+- **PostgreSQL** - Production database
+- **OpenRouter API** - AI-powered counter-arguments (Google Gemini via OpenRouter)
 - **Redis** - Optional caching
 
 ## 📝 Available Scripts
@@ -172,9 +162,9 @@ npm run type-check      # TypeScript type checking
 
 **Backend (`backend/.env`):**
 ```env
-GOOGLE_API_KEY=your-google-api-key-here  # REQUIRED
+OPENROUTER_API_KEY=Sk-or-v1-e1bc52f5bdffc6ba167ec870ba0f9b752d56d04c8f53d1f952970872f59e1cd0  # REQUIRED
 DATABASE_URL="file:./dev.db"              # SQLite (default)
-AI_MODEL=gemini-2.5-flash                 # Optional
+AI_MODEL=google/gemini-2.0-flash-001       # Optional (default)
 ```
 
 **Frontend (`frontend/.env.local`):**
@@ -195,17 +185,17 @@ To switch to PostgreSQL:
 
 ## 📚 Documentation
 
-- [Setup Guide](./docs/PHASE1_SETUP.md) - Detailed setup instructions
+- [Complete Deployment Guide](./COMPLETE_DEPLOYMENT_GUIDE.md) - Full deployment instructions for Vercel + Railway
+- [Quick Deploy Checklist](./QUICK_DEPLOY.md) - Fast reference for deployment
+- [OpenRouter Setup](./OPENROUTER_SETUP.md) - API key configuration
 - [API Documentation](./docs/API.md) - API endpoints reference
-- [Development Plan](./docs/FACT_CHECKER_PLAN.md) - Full project plan
-- [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues and fixes
-- [Google API Setup](./docs/GOOGLE_API_SETUP.md) - Gemini API configuration
+- [Changelog](./CHANGELOG.md) - Project history and changes
 
 ## 🐛 Troubleshooting
 
 ### Backend won't start
 - Check if port 5000 is available
-- Verify `GOOGLE_API_KEY` is set in `backend/.env`
+- Verify `OPENROUTER_API_KEY` is set in `backend/.env`
 - Check backend logs for errors
 
 ### Frontend shows "Network Error"
@@ -218,7 +208,10 @@ To switch to PostgreSQL:
 - Run `npm run db:migrate` to create database tables
 - SQLite database is created automatically (no setup needed!)
 
-See [Troubleshooting Guide](./docs/TROUBLESHOOTING.md) for more help.
+### API key errors
+- Verify `OPENROUTER_API_KEY` is set correctly in `backend/.env`
+- Check [OPENROUTER_SETUP.md](./OPENROUTER_SETUP.md) for configuration help
+- Ensure backend server has been restarted after updating `.env`
 
 ## 🎯 How It Works
 
@@ -238,25 +231,16 @@ See [Troubleshooting Guide](./docs/TROUBLESHOOTING.md) for more help.
 
 ## 🚀 Deployment
 
-### Frontend (Vercel)
+### Deployment
 
-**Quick Deploy:**
-1. Go to https://vercel.com/new
-2. Import GitHub repository
-3. Set **Root Directory** to `frontend`
-4. Add environment variable: `NEXT_PUBLIC_API_URL=https://your-backend-url/api`
-5. Deploy!
+For complete deployment instructions, see:
+- [COMPLETE_DEPLOYMENT_GUIDE.md](./COMPLETE_DEPLOYMENT_GUIDE.md) - Detailed step-by-step guide
+- [QUICK_DEPLOY.md](./QUICK_DEPLOY.md) - Quick reference checklist
 
-See [Vercel Deployment Guide](./docs/VERCEL_DEPLOYMENT.md) for detailed instructions.
-
-### Backend (Railway/Render + Supabase)
-
-Deploy backend with Supabase database:
-- **Database**: Supabase (free PostgreSQL)
-- **Backend Hosting**: Railway (recommended) or Render
-- **Setup Guide**: [Supabase Setup Guide](./docs/SUPABASE_SETUP.md)
-
-See [Free Deployment Guide](./docs/FREE_DEPLOYMENT_GUIDE.md) for all options.
+**Recommended Stack:**
+- **Frontend**: Vercel
+- **Backend**: Railway
+- **Database**: PostgreSQL (Railway or Supabase)
 
 ## 📄 License
 

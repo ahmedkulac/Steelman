@@ -79,31 +79,79 @@ export function generateCacheKey(claim: string): string {
  * Helper to make OpenRouter API calls
  */
 async function callOpenRouter(messages: any[], temperature: number = 0.7, jsonMode: boolean = true) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) {
     throw new Error('OPENROUTER_API_KEY is not configured');
   }
 
+  // Validate API key format
+  if (!apiKey.startsWith('Sk-or-v1-') && !apiKey.startsWith('sk-or-')) {
+    console.warn('[AI Service] Warning: API key format may be incorrect. Expected format: Sk-or-v1-... or sk-or-...');
+  }
+
   const model = process.env.AI_MODEL || 'google/gemini-2.0-flash-001';
+
+  // Debug: Log API key info (first 10 and last 4 chars only for security)
+  const keyPreview = apiKey.length > 14 
+    ? `${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 4)}`
+    : '***';
+  console.log(`[AI Service] Using API key: ${keyPreview}`);
+  console.log(`[AI Service] Key length: ${apiKey.length}`);
+  console.log(`[AI Service] Model: ${model}`);
+
+  // Prepare headers - ensure Authorization header is exactly correct
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${apiKey}`, // Must be exactly "Bearer <key>" with space
+    'Content-Type': 'application/json',
+  };
+
+  // Add optional headers if configured (these help with OpenRouter analytics)
+  if (SITE_URL) {
+    headers['HTTP-Referer'] = SITE_URL;
+  }
+  if (SITE_NAME) {
+    headers['X-Title'] = SITE_NAME;
+  }
+
+  // Verify Authorization header format
+  if (!headers['Authorization'].startsWith('Bearer ')) {
+    throw new Error('Authorization header format is incorrect. Must start with "Bearer "');
+  }
+  
+  // Verify API key is not empty after "Bearer "
+  const keyAfterBearer = headers['Authorization'].substring(7).trim();
+  if (!keyAfterBearer || keyAfterBearer.length < 10) {
+    throw new Error('API key appears to be empty or too short after "Bearer " prefix');
+  }
+
+  // Debug: Log headers (without exposing full API key)
+  console.log(`[AI Service] Request headers:`, {
+    ...headers,
+    'Authorization': `Bearer ${keyPreview}`,
+  });
+
+  // Prepare request body
+  const requestBody: any = {
+    model,
+    messages,
+    temperature,
+  };
+
+  // Only add response_format if jsonMode is true and model supports it
+  // Some models don't support this parameter, which can cause 401 errors
+  if (jsonMode) {
+    // Gemini models via OpenRouter may not support response_format
+    // We rely on prompt instructions instead
+    // Uncomment below if your model explicitly supports it:
+    // requestBody.response_format = { type: "json_object" };
+  }
 
   try {
     const response = await axios.post(
       OPENROUTER_API_URL,
+      requestBody,
       {
-        model,
-        messages,
-        temperature,
-        // Some models support response_format: { type: "json_object" }
-        // We include it but also rely on system prompt instructions
-        response_format: jsonMode ? { type: "json_object" } : undefined,
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': SITE_URL,
-          'X-Title': SITE_NAME,
-          'Content-Type': 'application/json',
-        },
+        headers,
       }
     );
 
@@ -111,11 +159,27 @@ async function callOpenRouter(messages: any[], temperature: number = 0.7, jsonMo
   } catch (error: any) {
     console.error('[AI Service] OpenRouter API Error:', error.message);
     if (error.response) {
-      // Log status and a snippet of data for debugging without cluttering logs too much
+      // Log status and full error data for debugging
       console.error(`[AI Service] Status: ${error.response.status}`);
-      const dataStr = JSON.stringify(error.response.data);
-      console.error(`[AI Service] Data: ${dataStr.length > 500 ? dataStr.substring(0, 500) + '...' : dataStr}`);
+      console.error(`[AI Service] Status Text: ${error.response.statusText}`);
+      const dataStr = JSON.stringify(error.response.data, null, 2);
+      console.error(`[AI Service] Response Data:`, dataStr);
+      
+      // Provide more helpful error messages
+      if (error.response.status === 401) {
+        const errorMsg = error.response.data?.error?.message || error.response.data?.message || 'Invalid API key';
+        throw new Error(`OpenRouter API authentication failed (401): ${errorMsg}. Please check your OPENROUTER_API_KEY in .env file.`);
+      }
     }
+    
+    // Log request details for debugging (without exposing full API key)
+    if (apiKey) {
+      const keyPreview = apiKey.substring(0, 10) + '...' + apiKey.substring(apiKey.length - 4);
+      console.error(`[AI Service] API Key Preview: ${keyPreview}`);
+    }
+    console.error(`[AI Service] Model: ${model}`);
+    console.error(`[AI Service] URL: ${OPENROUTER_API_URL}`);
+    
     throw new Error(`OpenRouter API call failed: ${error.message}`);
   }
 }

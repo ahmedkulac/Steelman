@@ -63,9 +63,9 @@ DATABASE_URL=${{Postgres.DATABASE_URL}}
 *(Use the variable reference - Railway will auto-populate it)*
 
 ```
-GOOGLE_API_KEY=your-actual-google-api-key-here
+OPENROUTER_API_KEY=Sk-or-v1-e1bc52f5bdffc6ba167ec870ba0f9b752d56d04c8f53d1f952970872f59e1cd0
 ```
-*(Replace with your actual API key)*
+*(Your OpenRouter API key)*
 
 ```
 PORT=5000
@@ -79,8 +79,10 @@ ALLOWED_ORIGINS=https://your-app.vercel.app,http://localhost:3000
 
 **Optional:**
 ```
-AI_MODEL=gemini-2.5-flash
+AI_MODEL=google/gemini-2.0-flash-001
 AI_MAX_TOKENS=2000
+SITE_URL=https://your-app.vercel.app
+SITE_NAME=Steelman
 ```
 
 4. Click **"Save"** after each variable
@@ -302,15 +304,17 @@ ALLOWED_ORIGINS=https://your-app.vercel.app,http://localhost:3000
 ```env
 NODE_ENV=production
 DATABASE_URL=${{Postgres.DATABASE_URL}}
-GOOGLE_API_KEY=your-api-key
+OPENROUTER_API_KEY=Sk-or-v1-e1bc52f5bdffc6ba167ec870ba0f9b752d56d04c8f53d1f952970872f59e1cd0
 PORT=5000
 ALLOWED_ORIGINS=https://your-app.vercel.app,http://localhost:3000
 ```
 
 **Optional:**
 ```env
-AI_MODEL=gemini-2.5-flash
+AI_MODEL=google/gemini-2.0-flash-001
 AI_MAX_TOKENS=2000
+SITE_URL=https://your-app.vercel.app
+SITE_NAME=Steelman
 ```
 
 ### Vercel (Frontend)
@@ -412,7 +416,7 @@ API Base:    https://your-backend.railway.app/api
 3. ❌ **CORS Not Updated** - Must add Vercel URL to backend CORS
 4. ❌ **Environment Variables Wrong** - Must use `NEXT_PUBLIC_` prefix for client-side vars
 5. ❌ **Database Not Migrated** - Run migrations after database setup
-6. ❌ **API Key Missing** - Must set `GOOGLE_API_KEY` in Railway
+6. ❌ **API Key Missing** - Must set `OPENROUTER_API_KEY` in Railway
 
 ---
 

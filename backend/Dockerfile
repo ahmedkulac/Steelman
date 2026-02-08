@@ -6,8 +6,8 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json ./
-# Use npm install if package-lock.json doesn't exist, otherwise use npm ci
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Use npm install instead of npm ci (works without package-lock.json)
+RUN npm install
 
 # Build the application
 FROM base AS builder
