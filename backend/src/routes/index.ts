@@ -26,6 +26,9 @@ router.get('/', (_req, res) => {
 =======
 router.get('/', (req, res) => {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
