@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import HistoryButton from "@/components/HistoryButton";
 import { themeScript } from "./theme-script";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -37,9 +38,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: themeScript }}
         />
         <ThemeProvider>
-          <div className="absolute top-4 right-4 z-50">
+          <nav className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between">
+            <HistoryButton />
             <ThemeToggle />
-          </div>
+          </nav>
           {children}
         </ThemeProvider>
       </body>

@@ -251,6 +251,63 @@ export function getCacheStats(): {
   }
 }
 
+/**
+ * Get all cached claims
+ * 
+ * @returns Array of cached claim entries with metadata
+ */
+export function getAllCachedClaims<T>(): Array<{
+  claim: string;
+  data: T;
+  cachedAt: number;
+  expiresAt: number;
+}> {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const keys = Object.keys(localStorage);
+    const cacheKeys = keys.filter((key) => key.startsWith(CACHE_PREFIX));
+    const claims: Array<{
+      claim: string;
+      data: T;
+      cachedAt: number;
+      expiresAt: number;
+    }> = [];
+
+    cacheKeys.forEach((key) => {
+      try {
+        const cached = localStorage.getItem(key);
+        if (cached) {
+          const entry: CacheEntry<T> = JSON.parse(cached);
+          
+          // Only include non-expired entries
+          if (entry.expiresAt >= Date.now()) {
+            // Try to extract the claim text from the cached data
+            // Since we don't store the original claim text, we'll use the content field
+            const claimText = (entry.data as any)?.content || 'Unknown claim';
+            
+            claims.push({
+              claim: claimText,
+              data: entry.data,
+              cachedAt: entry.cachedAt,
+              expiresAt: entry.expiresAt,
+            });
+          }
+        }
+      } catch (error) {
+        // Skip invalid entries
+      }
+    });
+
+    // Sort by cachedAt (newest first)
+    return claims.sort((a, b) => b.cachedAt - a.cachedAt);
+  } catch (error) {
+    return [];
+  }
+}
+
 // Clean up expired entries on load
 if (typeof window !== 'undefined') {
   cleanupCache();

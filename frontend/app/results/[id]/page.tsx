@@ -29,6 +29,7 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const claimId = params.id as string;
 
@@ -118,10 +119,26 @@ export default function ResultsPage() {
           <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <p className="text-red-800 dark:text-red-200 mb-4">{error}</p>
             <button
-              onClick={() => router.push('/')}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+              onClick={(e) => {
+                e.preventDefault();
+                router.push('/');
+              }}
+              className="group inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg font-semibold transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg min-h-[44px] touch-manipulation"
             >
-              Go Back Home
+              <svg
+                className="w-5 h-5 transition-transform duration-200 group-hover:-translate-x-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+              <span>Back to Home</span>
             </button>
           </div>
         </div>
@@ -140,11 +157,31 @@ export default function ResultsPage() {
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <button
-          onClick={() => router.push('/')}
-          className="mb-6 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center space-x-2"
+          onClick={(e) => {
+            e.preventDefault();
+            if (isNavigating) return; // Prevent multiple clicks
+            setIsNavigating(true);
+            router.push('/');
+          }}
+          disabled={isNavigating}
+          className="group mb-6 inline-flex items-center gap-2 px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 active:scale-95 touch-manipulation font-medium min-h-[44px] relative z-10 disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Back to home"
+          type="button"
         >
-          <span>←</span>
-          <span>Back to Home</span>
+          <svg
+            className="w-5 h-5 transition-transform duration-200 group-hover:-translate-x-1"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          <span>{isNavigating ? 'Loading...' : 'Back to Home'}</span>
         </button>
 
         {/* Results Component */}
