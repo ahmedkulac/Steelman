@@ -168,7 +168,7 @@ export default function AnalyzePage() {
                                         )}
                                     </div>
                                 </div>
-                                <div className="prose dark:prose-invert max-w-none max-h-[600px] overflow-y-auto pr-2 custom-scrollbar text-base leading-relaxed text-slate-800 dark:text-slate-300">
+                                <div className="prose dark:prose-invert max-w-none text-base leading-relaxed text-slate-800 dark:text-slate-300">
                                     {result.content.split('\n').filter(line => line.trim().length > 0).map((paragraph, index) => (
                                         <p key={index} className="mb-4 text-slate-800 dark:text-slate-300 leading-relaxed">
                                             {paragraph.trim()}
