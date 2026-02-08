@@ -34,6 +34,10 @@ function AnalyzeContent() {
     const [activeHighlight, setActiveHighlight] = useState<HighlightItem | null>(null);
     const [highlights, setHighlights] = useState<HighlightItem[]>([]);
 
+    // Text Fallback State
+    const [showTextFallback, setShowTextFallback] = useState(false);
+    const [textInput, setTextInput] = useState('');
+
     // Refs
     // We store refs to claim cards and fact check cards
     // The key will be `${type}-${index}`
@@ -94,11 +98,7 @@ function AnalyzeContent() {
         }
     }, [searchParams]);
 
-    const handleAnalyze = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!url) return;
-        await performAnalysis(url);
-    };
+
 
     // Calculate highlights when result changes
     useEffect(() => {
@@ -192,13 +192,7 @@ function AnalyzeContent() {
         scrollToHighlight(highlights[nextIndex]);
     };
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    const [showTextFallback, setShowTextFallback] = useState(false);
-    const [textInput, setTextInput] = useState('');
+
 
     const handleAnalyze = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -232,17 +226,6 @@ function AnalyzeContent() {
             setLoading(false);
         }
     };
-
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     /**
      * Renders text with highlights
      */
