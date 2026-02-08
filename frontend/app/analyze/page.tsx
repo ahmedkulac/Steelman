@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { analyzeUrl, AnalysisResult, AnalyzedClaim, FactCheck } from '@/lib/api/analyze';
 import Link from 'next/link';
 import CopyButton from '@/components/CopyButton';
@@ -15,6 +16,15 @@ interface HighlightItem {
 }
 
 export default function AnalyzePage() {
+    return (
+        <React.Suspense fallback={<div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">Loading...</div>}>
+            <AnalyzeContent />
+        </React.Suspense>
+    );
+}
+
+function AnalyzeContent() {
+    const searchParams = useSearchParams();
     const [url, setUrl] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -47,6 +57,49 @@ export default function AnalyzePage() {
         }
     }, []);
 
+    const performAnalysis = async (targetUrl: string) => {
+        setLoading(true);
+        setError(null);
+        setResult(null);
+        setActiveHighlight(null);
+        setHighlights([]);
+
+        try {
+            const analysisResult = await analyzeUrl(targetUrl);
+            setResult(analysisResult);
+        } catch (err: any) {
+            console.error('Analysis failed:', err);
+            const errorData = err.response?.data;
+            let errorMessage = errorData?.error ||
+                errorData?.details ||
+                errorData?.message ||
+                err.message ||
+                'Failed to analyze content. Please check the URL and try again.';
+
+            if (errorData?.suggestion) {
+                errorMessage += ` ${errorData.suggestion}`;
+            }
+            setError(errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Check for URL param on mount
+    useEffect(() => {
+        const urlParam = searchParams.get('url');
+        if (urlParam && !result && !loading) {
+            setUrl(urlParam);
+            performAnalysis(urlParam);
+        }
+    }, [searchParams]);
+
+    const handleAnalyze = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!url) return;
+        await performAnalysis(url);
+    };
+
     // Calculate highlights when result changes
     useEffect(() => {
         if (result) {
@@ -74,9 +127,6 @@ export default function AnalyzePage() {
                     if (!check.quote) return;
                     const quoteIndex = result.content.indexOf(check.quote);
                     if (quoteIndex !== -1) {
-                        // Check if this overlaps with an existing claim highlight?
-                        // For now, we'll allow overlaps but the sorting might handle nesting poorly with the simple split.
-                        // We will rely on simple replacement for now.
                         newHighlights.push({
                             type: 'fact',
                             index: index,
@@ -142,6 +192,7 @@ export default function AnalyzePage() {
         scrollToHighlight(highlights[nextIndex]);
     };
 
+<<<<<<< Updated upstream
     const [showTextFallback, setShowTextFallback] = useState(false);
     const [textInput, setTextInput] = useState('');
 
@@ -178,6 +229,8 @@ export default function AnalyzePage() {
         }
     };
 
+=======
+>>>>>>> Stashed changes
     /**
      * Renders text with highlights
      */
@@ -219,7 +272,6 @@ export default function AnalyzePage() {
 
                 {paragraphs.map((paragraph, pIndex) => {
                     // Find highlights that exist in this paragraph
-                    // We only look for exact string matches
                     const paragraphHighlights = highlights.filter(h => paragraph.includes(h.quote));
 
                     if (paragraphHighlights.length === 0) {
@@ -231,7 +283,6 @@ export default function AnalyzePage() {
                     }
 
                     // Sort highlights by their position in THIS paragraph
-                    // This is robust against the global startChar causing issues if paragraph text matches appeared multiple times globally
                     const sortedLocalHighlights = [...paragraphHighlights].sort((a, b) => {
                         return paragraph.indexOf(a.quote) - paragraph.indexOf(b.quote);
                     });
@@ -245,7 +296,7 @@ export default function AnalyzePage() {
                         // Find the quote starting from current cursor to avoid backtracking
                         const start = paragraph.indexOf(h.quote, cursor);
 
-                        // Only process if found and not overlapping with previous (valid start >= cursor)
+                        // Only process if found and not overlapping with previous
                         if (start !== -1 && start >= cursor) {
                             // Text before the highlight
                             if (start > cursor) {
@@ -321,11 +372,11 @@ export default function AnalyzePage() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
+                                className="bg-gray-900 hover:bg-yellow-400 text-white hover:text-black dark:bg-gray-100 dark:hover:bg-yellow-400 dark:text-black font-bold py-3 px-6 rounded-lg transition-all duration-300 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wider"
                             >
                                 {loading ? (
                                     <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
@@ -408,7 +459,7 @@ export default function AnalyzePage() {
                                     setActiveHighlight(null);
                                     setHighlights([]);
                                 }}
-                                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline flex items-center gap-2 transition-colors"
+                                className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-yellow-600 dark:hover:text-yellow-400 hover:underline flex items-center gap-2 transition-colors"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -463,7 +514,7 @@ export default function AnalyzePage() {
                                 {result.analysis.factChecks && result.analysis.factChecks.length > 0 && (
                                     <div>
                                         <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-100 flex items-center">
-                                            <span className="mr-2 text-blue-500">🔍</span>
+                                            <span className="mr-2 text-yellow-500">🔍</span>
                                             Fact Checks
                                         </h3>
                                         <div className="space-y-4">
@@ -526,7 +577,7 @@ export default function AnalyzePage() {
                                                 >
                                                     <div className="mb-3">
                                                         <div className="flex items-center justify-between mb-1">
-                                                            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                                                            <p className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                                                                 Claim From Article
                                                             </p>
                                                             <CopyButton text={claim.quote} size="sm" />
@@ -536,13 +587,13 @@ export default function AnalyzePage() {
                                                         </blockquote>
                                                     </div>
 
-                                                    <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                                                    <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                                                         <div className="flex items-center justify-between mb-3">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="w-6 h-6 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                                                <span className="w-6 h-6 bg-yellow-400 text-black rounded-full flex items-center justify-center text-xs font-bold">
                                                                     {index + 1}
                                                                 </span>
-                                                                <p className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
+                                                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                                                                     Counter-Argument
                                                                 </p>
                                                             </div>
@@ -552,7 +603,7 @@ export default function AnalyzePage() {
                                                             {claim.counterArgument}
                                                         </p>
                                                         {claim.reasoning && (
-                                                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-3 border-l-2 border-blue-300 dark:border-blue-600">
+                                                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-3 border-l-2 border-yellow-300 dark:border-yellow-600">
                                                                 {claim.reasoning}
                                                             </p>
                                                         )}
