@@ -37,7 +37,7 @@ app.use(helmet());
 // In production, specify allowed origins for security
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production'
-    ? process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000']
+    ? (process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'])
     : true, // Allow all origins in development
   credentials: true,
 };

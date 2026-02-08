@@ -110,8 +110,8 @@ chmod +x scripts/setup.sh
 - **TypeScript** - Type safety
 - **Prisma** - Database ORM
 - **SQLite** - Development database (no setup required!)
-- **PostgreSQL** - Production database
-- **OpenRouter API** - AI-powered counter-arguments (Google Gemini via OpenRouter)
+- **PostgreSQL** - Production database  
+- **OpenRouter API** - AI-powered counter-arguments (supports multiple models via OpenRouter)
 - **Redis** - Optional caching
 
 ## 📝 Available Scripts

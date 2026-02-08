@@ -30,9 +30,6 @@ router.post('/', async (req: Request, res: Response) => {
         const platform = detectPlatform(url);
         const isSocialMedia = platform !== 'unknown';
 
-        if (process.env.NODE_ENV === 'development') {
-            console.log(`[Analyze] Analyzing ${isSocialMedia ? platform : 'article'}: ${url}`);
-        }
 
         let title: string;
         let content: string;
@@ -64,13 +61,6 @@ router.post('/', async (req: Request, res: Response) => {
                     author: socialContent.author,
                 };
 
-                if (process.env.NODE_ENV === 'development') {
-                    console.log(`[Analyze] Extracted ${platform} content:`, {
-                        title,
-                        contentLength: content.length,
-                        author: byline,
-                    });
-                }
             } catch (socialError: unknown) {
                 const errorMessage = socialError instanceof Error ? socialError.message : 'Unknown error';
                 console.error(`[Analyze] Failed to extract ${platform} content:`, errorMessage);
@@ -155,20 +145,15 @@ router.post('/', async (req: Request, res: Response) => {
                         }
                     } catch (err: any) {
                         fetchError = err;
-                        console.warn(`[Analyze] Failed fetch with UA "${ua.substring(0, 20)}...": ${err.message}`);
                         // Continue to next UA
                     }
                 }
-
-                console.log(`[Analyze] Direct fetch result: ${htmlContent ? 'Success' : 'Failed'}`);
 
                 // Fallback: Google Web Cache
                 // If direct fetch fails (often due to WAF/403), try Google Cache
                 if (!htmlContent) {
                     try {
-                        console.log(`[Analyze] Direct fetch failed, trying Google Cache for: ${url}`);
                         const cacheUrl = `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`;
-                        console.log(`[Analyze] Cache URL: ${cacheUrl}`);
 
                         const cacheResponse = await axios.get(cacheUrl, {
                             headers: {
@@ -179,23 +164,13 @@ router.post('/', async (req: Request, res: Response) => {
                             httpAgent
                         });
 
-                        console.log(`[Analyze] Cache fetch status: ${cacheResponse.status}, Content-Length: ${cacheResponse.data?.length}`);
-
                         if (cacheResponse.status === 200 && typeof cacheResponse.data === 'string' && cacheResponse.data.length > 500) {
                             htmlContent = cacheResponse.data;
-                            console.log('[Analyze] Successfully fetched from Google Cache');
-                        } else {
-                            console.log('[Analyze] Cache response invalid or too short');
                         }
                     } catch (cacheErr: any) {
-                        console.warn(`[Analyze] Google Cache fetch failed: ${cacheErr.message}`);
-                        if (cacheErr.response) {
-                            console.warn(`[Analyze] Cache Error Status: ${cacheErr.response.status}`);
-                        }
+                        // Cache fetch failed, continue without it
                     }
                 }
-
-                console.log(`[Analyze] Final htmlContent length: ${htmlContent?.length || 0}`);
 
                 if (!htmlContent) {
                     throw fetchError || new Error('Failed to fetch content with all User-Agents and fallbacks');

@@ -6,6 +6,7 @@
  * Includes rate limit handling and error recovery.
  */
 
+// @ts-ignore - duck-duck-scrape doesn't have type definitions
 import { search, SafeSearchType } from 'duck-duck-scrape';
 import axios from 'axios';
 
@@ -40,7 +41,7 @@ export async function searchSources(
       title: r.title,
       url: r.url,
       snippet: r.description || r.snippet || '',
-    })).filter(r => r.url && r.url.startsWith('http'));
+    })).filter((r: SearchResult) => r.url && r.url.startsWith('http'));
 
     return mappedResults.slice(0, maxResults);
 
@@ -49,7 +50,6 @@ export async function searchSources(
 
     // Fallback 1: Try Google News RSS
     try {
-      console.log('[Search Sources] Falling back to Google News RSS');
       // Use a browser-like User-Agent
       const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
       const response = await axios.get(rssUrl, {
@@ -85,7 +85,6 @@ export async function searchSources(
 
     // Fallback 2: Try instant answer API if scrape fails
     try {
-      console.log('[Search Sources] Falling back to Instant Answer API');
       const iaUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`;
       const response = await axios.get(iaUrl);
       const data = response.data;

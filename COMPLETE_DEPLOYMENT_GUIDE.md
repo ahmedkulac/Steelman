@@ -424,7 +424,6 @@ API Base:    https://your-backend.railway.app/api
 
 - **Railway Docs:** https://docs.railway.app
 - **Vercel Docs:** https://vercel.com/docs
-- **Project Troubleshooting:** See `docs/TROUBLESHOOTING.md`
 - **API Documentation:** See `docs/API.md`
 
 ---
