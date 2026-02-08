@@ -20,6 +20,9 @@ import { getCache, setCache } from '../utils/cache';
 import { claimRateLimiter } from '../utils/rateLimit';
 
 const router = Router();
+
+// Prisma client instance (singleton pattern)
+// Reused across all route handlers for efficient database connections
 const prisma = new PrismaClient();
 
 /**
@@ -48,10 +51,15 @@ function parseSteelmanArguments(
  * @param claim - Claim object from database
  * @returns Formatted claim with parsed steelmanArguments
  */
-function formatClaimResponse(claim: any) {
+function formatClaimResponse(claim: {
+  steelmanArguments: string | null | undefined;
+  [key: string]: unknown;
+}) {
   return {
     ...claim,
-    steelmanArguments: parseSteelmanArguments(claim.steelmanArguments),
+    steelmanArguments: parseSteelmanArguments(
+      claim.steelmanArguments as string | null | undefined
+    ),
   };
 }
 

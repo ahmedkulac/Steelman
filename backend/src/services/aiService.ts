@@ -173,29 +173,38 @@ export async function generateSteelmanArgument(
     let parsed;
     try {
       parsed = JSON.parse(cleanedContent);
-    } catch (parseError: any) {
+    } catch (parseError: unknown) {
       // Enhanced error handling for malformed JSON
-      console.warn('JSON parse error:', parseError.message);
-      console.warn('Content preview (first 500 chars):', cleanedContent.substring(0, 500));
+      // Log error details for debugging (only in development)
+      const errorMessage =
+        parseError instanceof Error ? parseError.message : 'Unknown error';
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('JSON parse error:', errorMessage);
+        console.warn('Content preview (first 500 chars):', cleanedContent.substring(0, 500));
+      }
       
       // Try to repair common JSON issues
       try {
         const repaired = repairJson(cleanedContent);
         parsed = JSON.parse(repaired);
-        console.log('Successfully repaired JSON');
-      } catch (repairError: any) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Successfully repaired JSON');
+        }
+      } catch (repairError: unknown) {
         // If repair fails, try to extract just the JSON object more aggressively
         const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
             const extractedJson = repairJson(jsonMatch[0]);
             parsed = JSON.parse(extractedJson);
-            console.log('Successfully extracted and parsed JSON');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Successfully extracted and parsed JSON');
+            }
           } catch (extractError) {
             // Final fallback - provide helpful error message
             console.error('All JSON repair attempts failed');
             throw new Error(
-              `Failed to parse AI response as JSON: ${parseError.message}. ` +
+              `Failed to parse AI response as JSON: ${errorMessage}. ` +
               `The AI may have returned malformed JSON. Please try submitting the claim again. ` +
               `If the issue persists, try rephrasing your claim or contact support.`
             );
@@ -238,23 +247,29 @@ export async function generateSteelmanArgument(
     }));
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('AI Service Error:', error);
     
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    
     // Provide helpful error messages for common issues
-    if (error?.message?.includes('not found') || error?.message?.includes('404')) {
+    if (
+      errorMessage.includes('not found') ||
+      errorMessage.includes('404')
+    ) {
       const suggestions = [
         'Try setting AI_MODEL=gemini-2.5-flash in your .env file (current)',
         'Or try AI_MODEL=gemini-pro as fallback',
         'Available models: gemini-2.5-flash, gemini-2.5-pro, gemini-pro, gemini-1.0-pro',
       ];
       throw new Error(
-        `Model "${modelName}" not found. ${suggestions.join('. ')}. Original error: ${error.message}`
+        `Model "${modelName}" not found. ${suggestions.join('. ')}. Original error: ${errorMessage}`
       );
     }
     
     throw new Error(
-      `Failed to generate steelman argument: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to generate steelman argument: ${errorMessage}`
     );
   }
 }

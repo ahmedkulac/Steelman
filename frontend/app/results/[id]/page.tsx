@@ -77,10 +77,19 @@ export default function ResultsPage() {
         // Continue polling if still processing
         setPolling(true);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      // Type-safe error handling
+      const error =
+        err && typeof err === 'object' && 'message' in err
+          ? (err as {
+              message?: string;
+              response?: { data?: { message?: string } };
+            })
+          : null;
+      
       setError(
-        err.response?.data?.message ||
-          err.message ||
+        error?.response?.data?.message ||
+          error?.message ||
           'Failed to load claim results'
       );
       setPolling(false); // Stop polling on error

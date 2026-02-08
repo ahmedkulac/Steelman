@@ -95,7 +95,10 @@ app.use(errorHandler);
  * This is called asynchronously and won't block server startup.
  */
 initRedis().catch((error) => {
-  console.warn('Redis initialization failed (optional):', error.message);
+  // Only log in development to reduce noise in production
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('Redis initialization failed (optional):', error.message);
+  }
 });
 
 // ==================== Start Server ====================

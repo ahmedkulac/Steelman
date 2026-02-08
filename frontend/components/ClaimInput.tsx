@@ -95,26 +95,39 @@ export default function ClaimInput() {
       const response = await createClaim(data);
       // Redirect to results page with claim ID
       router.push(`/results/${response.id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Enhanced error handling with detailed messages
       let errorMessage = 'Failed to submit claim. ';
       
-      if (err.code === 'ECONNREFUSED' || err.message?.includes('Network Error') || !err.response) {
+      const error =
+        err && typeof err === 'object' && 'message' in err
+          ? (err as { message?: string; code?: string; response?: { status?: number; data?: { message?: string } } })
+          : null;
+      
+      if (
+        error?.code === 'ECONNREFUSED' ||
+        error?.message?.includes('Network Error') ||
+        !error?.response
+      ) {
         // Network/connection error
         errorMessage += 'Cannot connect to backend server. ';
         errorMessage += 'Please make sure the backend is running on http://localhost:5000';
-      } else if (err.response?.status === 429) {
+      } else if (error?.response?.status === 429) {
         // Rate limit error
-        errorMessage = err.response?.data?.message || 'Rate limit exceeded. Please try again later.';
-      } else if (err.response?.status === 400) {
+        errorMessage =
+          error.response?.data?.message ||
+          'Rate limit exceeded. Please try again later.';
+      } else if (error?.response?.status === 400) {
         // Validation error
-        errorMessage = err.response?.data?.message || 'Invalid input. Please check your claim.';
-      } else if (err.response?.data?.message) {
+        errorMessage =
+          error.response?.data?.message ||
+          'Invalid input. Please check your claim.';
+      } else if (error?.response?.data?.message) {
         // Backend error message
-        errorMessage = err.response.data.message;
-      } else if (err.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
         // Generic error
-        errorMessage += err.message;
+        errorMessage += error.message;
       } else {
         errorMessage += 'Please try again.';
       }

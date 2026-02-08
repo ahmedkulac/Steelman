@@ -29,7 +29,9 @@ let redisClient: ReturnType<typeof createClient> | null = null;
 export async function initRedis(): Promise<void> {
   // Skip Redis if explicitly disabled in environment
   if (process.env.REDIS_ENABLED === 'false') {
-    console.log('ℹ️  Redis disabled via REDIS_ENABLED=false');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('ℹ️  Redis disabled via REDIS_ENABLED=false');
+    }
     return;
   }
 
@@ -64,12 +66,16 @@ export async function initRedis(): Promise<void> {
 
     // Race connection vs timeout
     await Promise.race([connectPromise, timeoutPromise]);
-    console.log('✅ Redis connected');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Redis connected');
+    }
   } catch (error: any) {
     // Log warning but don't throw - app works without Redis
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
     console.warn(
       '⚠️  Redis connection failed, caching disabled:',
-      error.message || error
+      errorMessage
     );
     redisClient = null;
   }

@@ -1,10 +1,15 @@
+/**
+ * Next.js Configuration
+ * 
+ * Configuration for the Next.js frontend application.
+ */
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: true, // Enable React strict mode for better development experience
   images: {
-    domains: [],
+    domains: [], // Add image domains here if needed for next/image
   },
-  // Add any additional Next.js config here
 }
 
 module.exports = nextConfig

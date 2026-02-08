@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-Thank you for contributing to this hackathon project!
+Thank you for contributing to the Fact Checker App!
 
 ## Getting Started
 

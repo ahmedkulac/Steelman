@@ -1,7 +1,7 @@
 {
-  "name": "hackathon-starter",
+  "name": "fact-checker-app",
   "version": "1.0.0",
-  "description": "A comprehensive hackathon starter template",
+  "description": "Fact Checker App - AI-powered steelman counter-arguments for fact-checking",
   "private": true,
   "workspaces": [
     "frontend",
@@ -22,12 +22,14 @@
     "clean:nextjs": "powershell -ExecutionPolicy Bypass -File ./scripts/clean-nextjs.ps1"
   },
   "keywords": [
-    "hackathon",
-    "starter",
-    "template",
+    "fact-checker",
+    "steelman",
+    "ai",
+    "gemini",
     "nextjs",
     "express",
-    "typescript"
+    "typescript",
+    "critical-thinking"
   ],
   "author": "",
   "license": "MIT",

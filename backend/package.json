@@ -1,7 +1,7 @@
 {
-  "name": "hackathon-backend",
+  "name": "fact-checker-backend",
   "version": "1.0.0",
-  "description": "Express.js backend API for hackathon",
+  "description": "Express.js backend API for Fact Checker app",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
