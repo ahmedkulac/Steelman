@@ -78,7 +78,7 @@ export function generateCacheKey(claim: string): string {
 /**
  * Helper to make OpenRouter API calls
  */
-async function callOpenRouter(messages: any[], temperature: number = 0.7, jsonMode: boolean = true) {
+async function callOpenRouter(messages: any[], temperature: number = 0.7) {
   const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) {
     throw new Error('OPENROUTER_API_KEY is not configured');
@@ -158,8 +158,6 @@ function fixMissingCommas(jsonString: string): string {
   let result = '';
   let inString = false;
   let escapeNext = false;
-  let depth = 0; // Track nesting depth
-
   for (let i = 0; i < jsonString.length; i++) {
     const char = jsonString[i];
 
@@ -182,9 +180,6 @@ function fixMissingCommas(jsonString: string): string {
     }
 
     if (!inString) {
-      // Track depth
-      if (char === '{' || char === '[') depth++;
-      else if (char === '}' || char === ']') depth--;
 
       // Check if we need to add a comma before this character
       const needsCommaBefore = (char === '}' || char === ']' || char === '{' || char === '[' ||
@@ -702,7 +697,7 @@ export async function generateSteelmanArgument(
       { role: 'user', content: userPrompt }
     ];
 
-    const content = await callOpenRouter(messages, 0.75, true);
+    const content = await callOpenRouter(messages, 0.75);
 
     if (!content) throw new Error('No content returned from AI');
 
@@ -721,11 +716,13 @@ export async function generateSteelmanArgument(
       parsed = JSON.parse(cleanedContent);
     } catch (parseError: unknown) {
       // Repair strategies
-      let extractedJson = extractValidJson(cleanedContent);
+      const extractedJson = extractValidJson(cleanedContent);
       if (extractedJson && extractedJson !== cleanedContent) {
         try {
           parsed = JSON.parse(extractedJson);
-        } catch { }
+        } catch {
+          // Failed to parse extracted JSON, will try repair strategies
+        }
       }
 
       if (!parsed) {
@@ -747,7 +744,9 @@ export async function generateSteelmanArgument(
               repaired = repairJson(repaired);
             }
             parsed = JSON.parse(repaired);
-          } catch (e) { }
+          } catch {
+            // Repair attempt failed, will try next strategy
+          }
         }
       }
     }
@@ -933,7 +932,7 @@ export async function analyzeArticle(
       { role: 'user', content: userPrompt }
     ];
 
-    const content = await callOpenRouter(messages, 0.3, true);
+    const content = await callOpenRouter(messages, 0.3);
 
     if (!content) throw new Error('No content from AI');
 
@@ -949,17 +948,23 @@ export async function analyzeArticle(
 
     try {
       parsed = JSON.parse(cleanedContent);
-    } catch (e) {
-      let extracted = extractValidJson(cleanedContent);
+    } catch {
+      const extracted = extractValidJson(cleanedContent);
       if (extracted) {
-        try { parsed = JSON.parse(extracted); } catch (e) { }
+        try {
+          parsed = JSON.parse(extracted);
+        } catch {
+          // Failed to parse extracted JSON
+        }
       }
       if (!parsed) {
         // Minimal repair
         try {
-          let r = repairJson(extracted || cleanedContent);
+          const r = repairJson(extracted || cleanedContent);
           parsed = JSON.parse(r);
-        } catch (e) { }
+        } catch {
+          // Repair failed
+        }
       }
     }
 
