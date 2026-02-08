@@ -1,0 +1,16 @@
+Debug Log for Fetching: https://www.cnn.com/2026/02/07/us/hanceville-alabama-police-reckoning
+
+
+--- Trying UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb... ---
+Status: 403
+Content-Type: undefined
+Content-Length Header: 0
+Actual Data Length: 0
+Failed with status: 403
+
+--- Trying UA: Mozilla/5.0 (compatible; Googlebot/2.1; +http://ww... ---
+Status: 403
+Content-Type: text/html; charset=utf-8
+Content-Length Header: 425
+Actual Data Length: 425
+Failed with status: 403

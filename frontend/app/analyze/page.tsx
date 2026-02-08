@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeUrl, AnalysisResult, AnalyzedClaim, FactCheck } from '@/lib/api/analyze';
+import Link from 'next/link';
 import CopyButton from '@/components/CopyButton';
 import SourcesList from '@/components/SourcesList';
 
@@ -119,8 +120,8 @@ export default function AnalyzePage() {
                                             {i < parts.length - 1 && (
                                                 <span
                                                     className={`cursor-pointer transition-colors duration-200 px-1 rounded ${activeClaimIndex === index
-                                                            ? 'bg-yellow-300 dark:bg-yellow-600 text-black font-medium'
-                                                            : 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-200 dark:hover:bg-yellow-800'
+                                                        ? 'bg-yellow-300 dark:bg-yellow-600 text-black font-medium'
+                                                        : 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-200 dark:hover:bg-yellow-800'
                                                         }`}
                                                     onClick={() => setActiveClaimIndex(index === activeClaimIndex ? null : index)}
                                                     title="Click to see counter-argument"
@@ -258,28 +259,7 @@ export default function AnalyzePage() {
                                         {result.analysis.summary}
                                     </p>
 
-                                    {/* Bias Score */}
-                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Potential Bias Score</span>
-                                            <span className={`text-sm font-bold ${result.analysis.biasScore <= 3 ? 'text-green-600 dark:text-green-400' :
-                                                    result.analysis.biasScore <= 6 ? 'text-yellow-600 dark:text-yellow-400' :
-                                                        'text-red-600 dark:text-red-400'
-                                                }`}>{result.analysis.biasScore}/10</span>
-                                        </div>
-                                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full ${result.analysis.biasScore <= 3 ? 'bg-green-500' :
-                                                        result.analysis.biasScore <= 6 ? 'bg-yellow-500' :
-                                                            'bg-red-500'
-                                                    }`}
-                                                style={{ width: `${result.analysis.biasScore * 10}%` }}
-                                            />
-                                        </div>
-                                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                                            {result.analysis.biasAnalysis}
-                                        </p>
-                                    </div>
+
                                 </div>
 
                                 {/* Fact Checks Section */}
@@ -297,9 +277,9 @@ export default function AnalyzePage() {
                                                     </p>
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${check.verdict === 'verified' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                                                                check.verdict === 'disputed' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
-                                                                    check.verdict === 'misleading' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
-                                                                        'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                                                            check.verdict === 'disputed' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                                                                check.verdict === 'misleading' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
+                                                                    'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
                                                             }`}>
                                                             {check.verdict.replace('_', ' ')}
                                                         </span>
@@ -325,8 +305,8 @@ export default function AnalyzePage() {
                                                 key={index}
                                                 ref={(el) => { cardRefs.current[index] = el; }}
                                                 className={`rounded-lg shadow-md p-5 border-l-4 transition-all duration-300 ${activeClaimIndex === index
-                                                        ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-yellow-600 ring-2 ring-yellow-400/50'
-                                                        : 'bg-white dark:bg-gray-900 border-l-yellow-400 dark:border-l-yellow-400 border-y border-r border-gray-200 dark:border-gray-800'
+                                                    ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-yellow-600 ring-2 ring-yellow-400/50'
+                                                    : 'bg-white dark:bg-gray-900 border-l-yellow-400 dark:border-l-yellow-400 border-y border-r border-gray-200 dark:border-gray-800'
                                                     }`}
                                             >
                                                 <div className="mb-3">

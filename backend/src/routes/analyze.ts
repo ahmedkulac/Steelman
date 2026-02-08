@@ -95,13 +95,14 @@ router.post('/', async (req: Request, res: Response) => {
             // Handle regular articles using Readability
             try {
                 // User-Agent rotation strategy
+                // User-Agent rotation strategy (Updated to latest versions)
                 const userAgents = [
-                    // Desktop Chrome (High value user)
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    // Googlebot (Often whitelisted)
-                    'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-                    // Bingbot
-                    'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
+                    // Desktop Chrome (Windows) - Latest
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                    // Desktop Edge (Windows)
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
+                    // Desktop Firefox (Windows)
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
                 ];
 
                 let response;
@@ -115,21 +116,32 @@ router.post('/', async (req: Request, res: Response) => {
                 // Try fetching with different User-Agents
                 for (const ua of userAgents) {
                     try {
+                        const isChrome = ua.includes('Chrome');
+                        const headers: any = {
+                            'User-Agent': ua,
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                            'Accept-Language': 'en-US,en;q=0.9',
+                            'Accept-Encoding': 'gzip, deflate, br',
+                            'DNT': '1',
+                            'Connection': 'keep-alive',
+                            'Upgrade-Insecure-Requests': '1',
+                            'Sec-Fetch-Dest': 'document',
+                            'Sec-Fetch-Mode': 'navigate',
+                            'Sec-Fetch-Site': 'none',
+                            'Sec-Fetch-User': '?1',
+                            'Cache-Control': 'max-age=0',
+                            'Referer': 'https://www.google.com/',
+                        };
+
+                        // Add Client Hints for Chrome/Edge
+                        if (isChrome) {
+                            headers['Sec-Ch-Ua'] = '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"';
+                            headers['Sec-Ch-Ua-Mobile'] = '?0';
+                            headers['Sec-Ch-Ua-Platform'] = '"Windows"';
+                        }
+
                         response = await axios.get(url, {
-                            headers: {
-                                'User-Agent': ua,
-                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                                'Accept-Language': 'en-US,en;q=0.9',
-                                'Accept-Encoding': 'gzip, deflate, br',
-                                'DNT': '1',
-                                'Connection': 'keep-alive',
-                                'Upgrade-Insecure-Requests': '1',
-                                'Sec-Fetch-Dest': 'document',
-                                'Sec-Fetch-Mode': 'navigate',
-                                'Sec-Fetch-Site': 'none',
-                                'Cache-Control': 'max-age=0',
-                                'Referer': 'https://www.google.com/',
-                            },
+                            headers,
                             timeout: 15000,
                             maxRedirects: 5,
                             validateStatus: (status) => status < 500,
@@ -148,8 +160,45 @@ router.post('/', async (req: Request, res: Response) => {
                     }
                 }
 
+                console.log(`[Analyze] Direct fetch result: ${htmlContent ? 'Success' : 'Failed'}`);
+
+                // Fallback: Google Web Cache
+                // If direct fetch fails (often due to WAF/403), try Google Cache
                 if (!htmlContent) {
-                    throw fetchError || new Error('Failed to fetch content with all User-Agents');
+                    try {
+                        console.log(`[Analyze] Direct fetch failed, trying Google Cache for: ${url}`);
+                        const cacheUrl = `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`;
+                        console.log(`[Analyze] Cache URL: ${cacheUrl}`);
+
+                        const cacheResponse = await axios.get(cacheUrl, {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                            },
+                            timeout: 15000,
+                            httpsAgent,
+                            httpAgent
+                        });
+
+                        console.log(`[Analyze] Cache fetch status: ${cacheResponse.status}, Content-Length: ${cacheResponse.data?.length}`);
+
+                        if (cacheResponse.status === 200 && typeof cacheResponse.data === 'string' && cacheResponse.data.length > 500) {
+                            htmlContent = cacheResponse.data;
+                            console.log('[Analyze] Successfully fetched from Google Cache');
+                        } else {
+                            console.log('[Analyze] Cache response invalid or too short');
+                        }
+                    } catch (cacheErr: any) {
+                        console.warn(`[Analyze] Google Cache fetch failed: ${cacheErr.message}`);
+                        if (cacheErr.response) {
+                            console.warn(`[Analyze] Cache Error Status: ${cacheErr.response.status}`);
+                        }
+                    }
+                }
+
+                console.log(`[Analyze] Final htmlContent length: ${htmlContent?.length || 0}`);
+
+                if (!htmlContent) {
+                    throw fetchError || new Error('Failed to fetch content with all User-Agents and fallbacks');
                 }
 
                 // Check for common paywall indicators
