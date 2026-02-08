@@ -56,7 +56,7 @@ if (-not (Test-Path "backend\.env")) {
     if (Test-Path "backend\.env.example") {
         Copy-Item "backend\.env.example" "backend\.env"
         Write-Host "✅ Created backend/.env from backend/.env.example" -ForegroundColor Green
-        Write-Host "⚠️  IMPORTANT: Add your GOOGLE_API_KEY to backend/.env" -ForegroundColor Yellow
+        Write-Host "ℹ️  Shared Google API key included (or add your own)" -ForegroundColor Cyan
     } else {
         Write-Host "⚠️  backend/.env.example not found, skipping..." -ForegroundColor Yellow
     }

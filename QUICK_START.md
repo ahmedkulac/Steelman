@@ -39,9 +39,10 @@ The setup script will:
    cp frontend/.env.local.example frontend/.env.local
    ```
 
-3. **Add your Google API key:**
-   - Get key from: https://makersuite.google.com/app/apikey
-   - Add to `backend/.env`: `GOOGLE_API_KEY=your-key-here`
+3. **Google API Key:**
+   - A shared API key is included in `backend/.env.example`
+   - The setup script copies it automatically
+   - Or get your own from: https://makersuite.google.com/app/apikey
 
 4. **Generate Prisma client:**
    ```bash

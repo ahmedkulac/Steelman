@@ -50,7 +50,7 @@ chmod +x scripts/setup.sh
 ### Backend (`backend/.env`)
 
 **Required:**
-- `GOOGLE_API_KEY` - Your Google Gemini API key (get from https://makersuite.google.com/app/apikey)
+- `GOOGLE_API_KEY` - Google Gemini API key (shared key included in `.env.example`, or get your own from https://makersuite.google.com/app/apikey)
 
 **Optional (have defaults):**
 - `PORT` - Backend port (default: 5000)
@@ -66,16 +66,21 @@ chmod +x scripts/setup.sh
 **Optional:**
 - `NEXT_PUBLIC_APP_URL` - Frontend URL (default: http://localhost:3000)
 
-## Getting Your Google API Key
+## Google API Key
 
+**Good News!** A shared API key is already included in `backend/.env.example` and will be copied automatically during setup.
+
+**Optional - Get Your Own Key:**
 1. Visit: https://makersuite.google.com/app/apikey
 2. Sign in with Google account
 3. Click "Create API Key"
 4. Select or create a Google Cloud project
 5. Copy the API key
-6. Add to `backend/.env`: `GOOGLE_API_KEY=your-key-here`
+6. Replace in `backend/.env`: `GOOGLE_API_KEY=your-key-here`
 
 **Free tier available!** No credit card required initially.
+
+**Note:** The shared key works for development, but for production or heavy usage, get your own key to avoid rate limits.
 
 ## Security Best Practices
 

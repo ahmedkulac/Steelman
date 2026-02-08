@@ -58,7 +58,7 @@ if [ ! -f "backend/.env" ]; then
     if [ -f "backend/.env.example" ]; then
         cp backend/.env.example backend/.env
         echo "✅ Created backend/.env from backend/.env.example"
-        echo "⚠️  IMPORTANT: Add your GOOGLE_API_KEY to backend/.env"
+        echo "ℹ️  Shared Google API key included (or add your own)"
     else
         echo "⚠️  backend/.env.example not found, skipping..."
     fi

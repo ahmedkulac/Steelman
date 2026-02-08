@@ -38,19 +38,14 @@ The script will:
 - ✅ Generate Prisma client
 - ✅ Run database migrations
 
-### Step 3: Add Your Google API Key
+### Step 3: Google API Key (Optional)
 
-1. **Get API Key:**
-   - Visit: https://makersuite.google.com/app/apikey
-   - Sign in with Google
-   - Click "Create API Key"
-   - Copy your key
+**Good news!** A shared API key is already included in `backend/.env.example` and will be copied automatically.
 
-2. **Add to Backend:**
-   - Open `backend/.env`
-   - Find: `GOOGLE_API_KEY=`
-   - Add your key: `GOOGLE_API_KEY=your-actual-key-here`
-   - Save the file
+**Optional:** If you want your own key (recommended for production):
+1. Visit: https://makersuite.google.com/app/apikey
+2. Create your own API key
+3. Replace the key in `backend/.env`
 
 ### Step 4: Start the App
 

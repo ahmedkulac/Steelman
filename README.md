@@ -57,10 +57,10 @@ chmod +x scripts/setup.sh
    # Usually no changes needed unless backend runs on different port
    ```
 
-3. **Get Google Gemini API Key:**
-   - Visit: https://makersuite.google.com/app/apikey
-   - Create an API key (free tier available)
-   - Add to `backend/.env`: `GOOGLE_API_KEY=your-key-here`
+3. **Google API Key:**
+   - A shared API key is already in `backend/.env.example`
+   - Or get your own from: https://makersuite.google.com/app/apikey
+   - The setup script will copy it automatically
 
 4. **Generate Prisma client:**
    ```bash
