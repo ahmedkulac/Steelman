@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { analyzeUrl } from '@/lib/api/analyze';
 import Link from 'next/link';
+import CopyButton from '@/components/CopyButton';
 
 interface AnalyzedClaim {
     claim: string;
@@ -207,18 +208,24 @@ export default function AnalyzePage() {
                                 {result.analysis.claims.map((claim, index) => (
                                     <div key={index} className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-5 border-l-4 border-indigo-500">
                                         <div className="mb-3">
-                                            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide mb-1">
-                                                Claim From Article
-                                            </p>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                                                    Claim From Article
+                                                </p>
+                                                <CopyButton text={claim.quote} size="sm" />
+                                            </div>
                                             <blockquote className="italic text-slate-600 dark:text-slate-400 border-l-2 border-slate-300 dark:border-slate-600 pl-3 py-1 my-2 bg-slate-50 dark:bg-slate-900/50 rounded-r text-sm">
                                                 "{claim.quote}"
                                             </blockquote>
                                         </div>
 
                                         <div className="mt-4">
-                                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide mb-1">
-                                                Steelman Counter-Argument
-                                            </p>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+                                                    Steelman Counter-Argument
+                                                </p>
+                                                <CopyButton text={claim.counterArgument} size="sm" />
+                                            </div>
                                             <p className="text-slate-800 dark:text-slate-200 font-medium mb-2">
                                                 {claim.counterArgument}
                                             </p>

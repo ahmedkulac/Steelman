@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getAllCachedClaims, clearCache, removeCachedClaim } from '@/lib/cache';
 import { Claim } from '@/lib/api/claims';
+import CopyButton from '@/components/CopyButton';
 
 interface CachedClaimEntry {
   claim: string;
@@ -180,9 +181,16 @@ export default function HistoryPage() {
                     )}
                   </div>
                   
-                  <p className="text-gray-900 dark:text-gray-100 font-medium mb-2 line-clamp-2">
-                    {entry.data.content || entry.claim}
-                  </p>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="text-gray-900 dark:text-gray-100 font-medium line-clamp-2 flex-1">
+                      {entry.data.content || entry.claim}
+                    </p>
+                    <CopyButton 
+                      text={entry.data.content || entry.claim} 
+                      size="sm"
+                      className="flex-shrink-0"
+                    />
+                  </div>
                   
                   <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                     <span>Cached: {formatDate(entry.cachedAt)}</span>
@@ -253,9 +261,16 @@ export default function HistoryPage() {
                           key={argIndex}
                           className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
                         >
-                          <p className="text-gray-900 dark:text-gray-100 font-medium mb-2">
-                            {arg.argument}
-                          </p>
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <p className="text-gray-900 dark:text-gray-100 font-medium flex-1">
+                              {arg.argument}
+                            </p>
+                            <CopyButton 
+                              text={arg.argument} 
+                              size="sm"
+                              className="flex-shrink-0"
+                            />
+                          </div>
                           {arg.reasoning && (
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                               {arg.reasoning}

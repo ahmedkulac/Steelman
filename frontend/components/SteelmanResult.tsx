@@ -14,6 +14,7 @@
 import { CounterArgument, Claim } from '@/lib/api/claims';
 import EvidenceList from './EvidenceList';
 import SourcesList from './SourcesList';
+import CopyButton from './CopyButton';
 
 interface SteelmanResultProps {
   claim: Claim;
@@ -78,9 +79,12 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
     <div className="w-full space-y-6">
       {/* Original Claim Display */}
       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
-          Original Claim
-        </h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+            Original Claim
+          </h3>
+          <CopyButton text={content} size="sm" />
+        </div>
         <p className="text-gray-900 dark:text-gray-100">{content}</p>
         {/* Sources supporting the claim */}
         {claim.claimSources && claim.claimSources.length > 0 && (
@@ -121,9 +125,12 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
             <div className="space-y-4">
               {/* Main Argument */}
               <div>
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Argument
-                </h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Argument
+                  </h4>
+                  <CopyButton text={arg.argument} size="sm" />
+                </div>
                 <p className="text-gray-900 dark:text-gray-100">
                   {arg.argument}
                 </p>
