@@ -123,16 +123,17 @@ export default function AnalyzePage() {
 
         let nextIndex = 0;
         if (activeHighlight) {
-            const currentHighlightIndex = highlights.findIndex(
+            // Find current index in the SORTED highlights array
+            const currentSortedIndex = highlights.findIndex(
                 h => h.type === activeHighlight.type && h.index === activeHighlight.index
             );
 
-            if (currentHighlightIndex !== -1) {
+            if (currentSortedIndex !== -1) {
                 if (direction === 'next') {
-                    nextIndex = currentHighlightIndex + 1;
+                    nextIndex = currentSortedIndex + 1;
                     if (nextIndex >= highlights.length) nextIndex = 0; // Loop to start
                 } else {
-                    nextIndex = currentHighlightIndex - 1;
+                    nextIndex = currentSortedIndex - 1;
                     if (nextIndex < 0) nextIndex = highlights.length - 1; // Loop to end
                 }
             }

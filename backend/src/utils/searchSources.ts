@@ -1,13 +1,13 @@
+
 /**
  * Source Search Utility
  * 
- * Searches the web for sources to support claims and counter-arguments.
- * Uses DuckDuckGo HTML search (free, no API key required) as a fallback,
- * with support for other search APIs via environment variables.
+ * Searches the web for sources using duck-duck-scrape integration.
+ * Includes rate limit handling and error recovery.
  */
 
+import { search, SafeSearchType } from 'duck-duck-scrape';
 import axios from 'axios';
-import { JSDOM } from 'jsdom';
 
 export interface SearchResult {
   title: string;
@@ -16,143 +16,136 @@ export interface SearchResult {
   relevanceScore?: number;
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 /**
- * Search for sources using DuckDuckGo HTML search
- * This is a free alternative that doesn't require an API key
- * 
- * @param query - Search query
- * @param maxResults - Maximum number of results to return (default: 5)
- * @returns Array of search results
+ * Search for sources using duck-duck-scrape
  */
 export async function searchSources(
   query: string,
   maxResults: number = 5
 ): Promise<SearchResult[]> {
   try {
-    // Use DuckDuckGo HTML search (free, no API key)
-    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    
-    const response = await axios.get(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      timeout: 10000,
-    });
+    // Add random delay to avoid rate limits
+    await sleep(Math.random() * 1000 + 500);
 
-    const dom = new JSDOM(response.data);
-    const document = dom.window.document;
+    const searchOptions = {
+      safeSearch: SafeSearchType.MODERATE
+    };
 
-    const results: SearchResult[] = [];
-    
-    // DuckDuckGo HTML structure: try multiple selectors for robustness
-    // Modern DuckDuckGo uses .result, older versions might use different classes
-    let resultElements = document.querySelectorAll('.result');
-    
-    // Fallback: try other common result container selectors
-    if (resultElements.length === 0) {
-      resultElements = document.querySelectorAll('.web-result');
-    }
-    if (resultElements.length === 0) {
-      resultElements = document.querySelectorAll('[class*="result"]');
-    }
-    
-    for (let i = 0; i < Math.min(resultElements.length, maxResults); i++) {
-      const result = resultElements[i];
-      
-      // Try multiple selectors for title/link
-      const titleElement = result.querySelector('.result__a') || 
-                          result.querySelector('.result-title a') ||
-                          result.querySelector('a.result__a') ||
-                          result.querySelector('h2 a') ||
-                          result.querySelector('a[href^="http"]');
-      
-      const title = titleElement?.textContent?.trim() || 'Untitled';
-      
-      // Extract URL - try href attribute first, then check for data attributes
-      let url = titleElement?.getAttribute('href') || '';
-      
-      // DuckDuckGo sometimes uses relative URLs that need to be resolved
-      if (url && !url.startsWith('http')) {
-        // Try to resolve relative URLs
-        if (url.startsWith('/l/?kh=')) {
-          // DuckDuckGo redirect URLs - extract the actual URL
-          const urlMatch = url.match(/uddg=([^&]+)/);
-          if (urlMatch) {
-            url = decodeURIComponent(urlMatch[1]);
-          }
-        } else if (url.startsWith('/')) {
-          // Relative URL - prepend domain
-          url = `https://duckduckgo.com${url}`;
+    const results = await search(query, searchOptions);
+
+    // Map library results to our format
+    const mappedResults: SearchResult[] = results.results.map((r: any) => ({
+      title: r.title,
+      url: r.url,
+      snippet: r.description || r.snippet || '',
+    })).filter(r => r.url && r.url.startsWith('http'));
+
+    return mappedResults.slice(0, maxResults);
+
+  } catch (error: any) {
+    console.error('[Search Sources] Error searching:', error.message);
+
+    // Fallback 1: Try Google News RSS
+    try {
+      console.log('[Search Sources] Falling back to Google News RSS');
+      // Use a browser-like User-Agent
+      const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+      const response = await axios.get(rssUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+
+      // Simple XML parsing with regex to avoid heavy deps
+      const items = response.data.match(/<item>[\s\S]*?<\/item>/g) || [];
+
+      const rssResults: SearchResult[] = [];
+      for (const item of items.slice(0, maxResults)) {
+        const titleMatch = item.match(/<title>(.*?)<\/title>/);
+        const linkMatch = item.match(/<link>(.*?)<\/link>/);
+        const pubDateMatch = item.match(/<pubDate>(.*?)<\/pubDate>/);
+
+        if (titleMatch && linkMatch) {
+          rssResults.push({
+            title: titleMatch[1].replace('<![CDATA[', '').replace(']]>', ''),
+            url: linkMatch[1],
+            snippet: pubDateMatch ? `Published: ${pubDateMatch[1]}` : 'News Article'
+          });
         }
       }
-      
-      // Extract snippet - try multiple selectors
-      const snippetElement = result.querySelector('.result__snippet') || 
-                            result.querySelector('.result-snippet') ||
-                            result.querySelector('.result__body') ||
-                            result.querySelector('.snippet');
-      const snippet = snippetElement?.textContent?.trim() || '';
 
-      // Only add if we have a valid URL and title
-      if (url && title && url.startsWith('http')) {
-        results.push({
-          title: title.substring(0, 200), // Limit title length
-          url,
-          snippet: snippet.substring(0, 300), // Limit snippet length
-        });
+      if (rssResults.length > 0) {
+        return rssResults;
       }
+    } catch (rssError) {
+      console.error('[Search Sources] Google RSS fallback failed:', rssError);
     }
 
-    return results;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Search Sources] Error searching:', errorMessage);
-    
-    // Return empty array on error (don't fail the whole request)
-    return [];
+    // Fallback 2: Try instant answer API if scrape fails
+    try {
+      console.log('[Search Sources] Falling back to Instant Answer API');
+      const iaUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`;
+      const response = await axios.get(iaUrl);
+      const data = response.data;
+
+      const fallbackResults: SearchResult[] = [];
+
+      // Add AbstractURL if present
+      if (data.AbstractURL && data.Heading) {
+        fallbackResults.push({
+          title: data.Heading,
+          url: data.AbstractURL,
+          snippet: data.AbstractText || 'Encyclopedia entry'
+        });
+      }
+
+      // Add RelatedTopics
+      if (data.RelatedTopics) {
+        data.RelatedTopics.slice(0, maxResults).forEach((t: any) => {
+          if (t.FirstURL && t.Text) {
+            fallbackResults.push({
+              title: t.Text.split(' - ')[0] || 'Source',
+              url: t.FirstURL,
+              snippet: t.Text
+            });
+          }
+        });
+      }
+
+      return fallbackResults;
+    } catch (fallbackError) {
+      console.error('[Search Sources] Fallback failed:', fallbackError);
+      return [];
+    }
   }
 }
 
 /**
  * Search for sources supporting a claim
- * 
- * @param claim - The claim to find sources for
- * @returns Array of search results
  */
 export async function searchClaimSources(claim: string): Promise<SearchResult[]> {
-  // Create search query from claim
-  const query = `${claim} evidence sources`;
+  const query = `${claim} proof evidence`;
   return searchSources(query, 5);
 }
 
 /**
  * Search for sources supporting a counter-argument
- * 
- * @param counterArgument - The counter-argument text
- * @param claim - The original claim (for context)
- * @returns Array of search results
  */
 export async function searchCounterArgumentSources(
   counterArgument: string,
   claim?: string
 ): Promise<SearchResult[]> {
-  // Create search query from counter-argument
   let query = counterArgument;
   if (claim) {
-    // Add claim context to improve search relevance
-    query = `${counterArgument} evidence against "${claim}"`;
+    query = `${counterArgument} vs "${claim}"`;
   }
   return searchSources(query, 5);
 }
 
 /**
- * Search for multiple queries and combine results
- * 
- * @param queries - Array of search queries
- * @param maxResultsPerQuery - Max results per query
- * @returns Combined array of unique search results
+ * Search for multiple queries
  */
 export async function searchMultipleQueries(
   queries: string[],
@@ -161,20 +154,19 @@ export async function searchMultipleQueries(
   const allResults: SearchResult[] = [];
   const seenUrls = new Set<string>();
 
-  // Search each query
   for (const query of queries) {
     try {
       const results = await searchSources(query, maxResultsPerQuery);
-      
-      // Add unique results
+
       for (const result of results) {
         if (!seenUrls.has(result.url)) {
           seenUrls.add(result.url);
           allResults.push(result);
         }
       }
+      // Add delay between queries
+      await sleep(1000);
     } catch (error) {
-      // Continue with other queries if one fails
       console.error(`[Search Sources] Error searching query "${query}":`, error);
     }
   }
