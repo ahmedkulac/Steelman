@@ -25,7 +25,13 @@ frontend/
 │   ├── ClaimInput.tsx    # Main claim submission form
 │   ├── SteelmanResult.tsx # Results display component
 │   ├── ConfidenceBadge.tsx # Confidence score visualization
-│   └── EvidenceList.tsx  # Evidence display component
+│   ├── EvidenceList.tsx  # Evidence display component
+│   ├── Header.tsx        # App header with navigation
+│   └── ThemeToggle.tsx   # Dark/light mode toggle button
+├── contexts/              # React contexts
+│   └── ThemeContext.tsx  # Theme management context
+├── scripts/               # Utility scripts
+│   └── predev-cleanup.js # Pre-dev cleanup script
 ├── lib/                   # Utility functions and API clients
 │   ├── api.ts            # Axios instance configuration
 │   └── api/claims.ts     # Claims API client functions

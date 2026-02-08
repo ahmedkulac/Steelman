@@ -6,7 +6,6 @@
  * - Dark mode as default
  * - localStorage persistence
  * - SSR-safe implementation
- * - Automatic system preference detection (fallback)
  */
 
 'use client';
@@ -44,16 +43,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
-  const [mounted, setMounted] = useState(false);
-
-  /**
-   * Initialize theme on mount
-   * Applies the theme to the document root
-   */
-  useEffect(() => {
-    setMounted(true);
-    applyTheme(theme);
-  }, [theme]);
 
   /**
    * Apply theme to document root
@@ -69,6 +58,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       }
     }
   };
+
+  /**
+   * Initialize theme on mount
+   * Applies the theme to the document root when component mounts
+   */
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
 
   /**
    * Update theme state and persist to localStorage
