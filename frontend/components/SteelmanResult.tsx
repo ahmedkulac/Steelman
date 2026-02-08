@@ -13,7 +13,6 @@
 'use client';
 
 import { CounterArgument, Claim } from '@/lib/api/claims';
-import ConfidenceBadge from './ConfidenceBadge';
 import EvidenceList from './EvidenceList';
 
 interface SteelmanResultProps {
@@ -85,12 +84,7 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
         <p className="text-gray-900 dark:text-gray-100">{content}</p>
       </div>
 
-      {/* Confidence Score Badge */}
-      {confidenceScore !== undefined && (
-        <div className="flex items-center justify-center">
-          <ConfidenceBadge score={confidenceScore} />
-        </div>
-      )}
+
 
       {/* Counter Arguments Section */}
       <div className="space-y-4">
@@ -114,11 +108,6 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
                 Counter-Argument {index + 1}
               </h3>
               {/* Strength Badge */}
-              {arg.strength && (
-                <span className="px-3 py-1 text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full">
-                  Strength: {arg.strength}/10
-                </span>
-              )}
             </div>
 
             {/* Counter-argument Content */}
