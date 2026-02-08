@@ -160,10 +160,7 @@ function fixMissingCommas(jsonString: string): string {
           } else if (/\d/.test(lastChar)) {
             // Might be end of number - check backwards for number pattern
             let k = j;
-            let isNumber = true;
-            let hasExp = false;
             while (k >= 0 && (/\d/.test(result[k]) || result[k] === '.' || result[k] === 'e' || result[k] === 'E' || result[k] === '+' || result[k] === '-')) {
-              if (result[k] === 'e' || result[k] === 'E') hasExp = true;
               k--;
             }
             // If we hit a non-number char that's a valid separator, it's an end
@@ -306,7 +303,6 @@ function repairJson(jsonString: string): string {
 
   for (let i = 0; i < repaired.length; i++) {
     const char = repaired[i];
-    const nextChar = i < repaired.length - 1 ? repaired[i + 1] : null;
 
     if (escapeNext) {
       result += char;
@@ -441,12 +437,10 @@ function aggressivelyRepairStrings(jsonString: string): string {
   let inString = false;
   let escapeNext = false;
   let charsSinceQuote = 0;
-  let stringStart = -1;
   let stringContent = '';
 
   for (let i = 0; i < jsonString.length; i++) {
     const char = jsonString[i];
-    const nextChar = i < jsonString.length - 1 ? jsonString[i + 1] : null;
 
     if (escapeNext) {
       result += char;
@@ -474,12 +468,10 @@ function aggressivelyRepairStrings(jsonString: string): string {
         inString = false;
         charsSinceQuote = 0;
         stringContent = '';
-        stringStart = -1;
       } else {
         // Opening quote
         inString = true;
         charsSinceQuote = 0;
-        stringStart = result.length;
         stringContent = '';
       }
       result += char;
@@ -496,7 +488,6 @@ function aggressivelyRepairStrings(jsonString: string): string {
         inString = false;
         charsSinceQuote = 0;
         stringContent = '';
-        stringStart = -1;
         // Skip the newline as it's not valid in JSON strings
         continue;
       }
@@ -522,7 +513,6 @@ function aggressivelyRepairStrings(jsonString: string): string {
               inString = false;
               charsSinceQuote = 0;
               stringContent = '';
-              stringStart = -1;
               result += char;
               continue;
             }
@@ -539,7 +529,6 @@ function aggressivelyRepairStrings(jsonString: string): string {
           inString = false;
           charsSinceQuote = 0;
           stringContent = '';
-          stringStart = -1;
           result += char;
           continue;
         }
@@ -560,7 +549,6 @@ function aggressivelyRepairStrings(jsonString: string): string {
             inString = false;
             charsSinceQuote = 0;
             stringContent = '';
-            stringStart = -1;
             result += char;
             continue;
           }
@@ -570,7 +558,6 @@ function aggressivelyRepairStrings(jsonString: string): string {
             inString = false;
             charsSinceQuote = 0;
             stringContent = '';
-            stringStart = -1;
             result += char;
             continue;
           }
@@ -964,7 +951,7 @@ export async function generateSteelmanArgument(
     const response: SteelmanResponse = {
       counterArguments,
       confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.5,
-      relatedTopics: Array.isArray(parsed.relatedTopics) ? parsed.relatedTopics.filter(t => typeof t === 'string') : [],
+      relatedTopics: Array.isArray(parsed.relatedTopics) ? parsed.relatedTopics.filter((t: unknown) => typeof t === 'string') : [],
       processingTime,
     };
 
@@ -1572,21 +1559,21 @@ COMMON JSON ERRORS TO AVOID:
     let claims = [];
     if (Array.isArray(parsed.claims)) {
       claims = parsed.claims
-        .filter(claim => claim && typeof claim === 'object')
-        .map(claim => ({
+        .filter((claim: unknown) => claim && typeof claim === 'object')
+        .map((claim: any) => ({
           claim: typeof claim.claim === 'string' ? claim.claim : (typeof claim.quote === 'string' ? claim.quote : ''),
           quote: typeof claim.quote === 'string' ? claim.quote : (typeof claim.claim === 'string' ? claim.claim : ''),
           counterArgument: typeof claim.counterArgument === 'string' ? claim.counterArgument : '',
           reasoning: typeof claim.reasoning === 'string' ? claim.reasoning : '',
           strength: typeof claim.strength === 'number' ? Math.max(1, Math.min(10, claim.strength)) : 5,
         }))
-        .filter(claim => claim.claim.length > 0 && claim.counterArgument.length > 0);
+        .filter((claim: { claim: string; counterArgument: string }) => claim.claim.length > 0 && claim.counterArgument.length > 0);
     }
 
     const analysisResponse: ArticleAnalysisResponse = {
       summary: typeof parsed.summary === 'string' ? parsed.summary : 'No summary available',
       claims,
-      factChecks: Array.isArray(parsed.factChecks) ? parsed.factChecks.filter(fc => typeof fc === 'object') : [],
+      factChecks: Array.isArray(parsed.factChecks) ? parsed.factChecks.filter((fc: unknown) => typeof fc === 'object') : [],
       biasScore: typeof parsed.biasScore === 'number' ? Math.max(0, Math.min(10, parsed.biasScore)) : 5,
       biasAnalysis: typeof parsed.biasAnalysis === 'string' ? parsed.biasAnalysis : 'No bias analysis available',
       processingTime: Date.now() - startTime,
