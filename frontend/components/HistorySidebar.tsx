@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { getAllCachedClaims, clearCache, removeCachedClaim } from '@/lib/cache';
 import { Claim } from '@/lib/api/claims';
 import CopyButton from './CopyButton';
+import { formatHistoryDate, getTimeUntilExpiry } from '@/lib/dateUtils';
 
 interface CachedClaimEntry {
   claim: string;
@@ -195,32 +196,8 @@ export default function HistorySidebar({ isOpen, onClose }: HistorySidebarProps)
 
   // ===== Helper Functions =====
   
-  /**
-   * Format timestamp as readable date string
-   */
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  /**
-   * Get time until cache expiry as human-readable string
-   */
-  const getTimeUntilExpiry = (expiresAt: number): string => {
-    const now = Date.now();
-    const diff = expiresAt - now;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
-    if (days > 0) {
-      return `${days}d left`;
-    }
-    return 'Expiring soon';
-  };
+  // Using shared date utilities for consistent formatting
+  const formatDate = formatHistoryDate;
 
   // ===== Computed Values =====
   
