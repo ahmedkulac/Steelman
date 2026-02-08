@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import Header from "@/components/Header";
+import ThemeToggle from "@/components/ThemeToggle";
 import { themeScript } from "./theme-script";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -37,7 +37,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: themeScript }}
         />
         <ThemeProvider>
-          <Header />
+          <div className="absolute top-4 right-4 z-50">
+            <ThemeToggle />
+          </div>
           {children}
         </ThemeProvider>
       </body>

@@ -32,7 +32,7 @@ export default function Home() {
             STEELMAN
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 font-light max-w-xl mx-auto mt-6">
-            Enter an article URL. We'll construct the strongest possible counter-argument.
+            The Steelman Argument is the practice of constructing the strongest, most persuasive version of an opponent's argument. Enter an article URL.
           </p>
         </div>
 
