@@ -1,0 +1,80 @@
+// Prisma Schema for PostgreSQL (Supabase)
+// This is the production schema - use this when deploying with Supabase
+// 
+// To use this schema:
+// 1. Copy this file to schema.prisma (backup original first)
+// 2. Or rename: mv schema.prisma schema.sqlite.prisma && cp schema.postgresql.prisma schema.prisma
+// 3. Run: npm run db:generate
+// 4. Run: npm run db:migrate
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  claims      Claim[]
+  feedbacks   Feedback[]
+
+  @@map("users")
+}
+
+// Claim submission for fact-checking
+model Claim {
+  id          String   @id @default(cuid())
+  content     String
+  category    String?  // politics, science, health, etc.
+  userId      String?  // Optional: for authenticated users
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // AI-generated results (stored as JSON string for SQLite compatibility, but can use Json type in PostgreSQL)
+  steelmanArguments String? // JSON string of counter-arguments array (using String for compatibility)
+  confidenceScore   Float?
+  processingStatus  String @default("pending") // pending, processing, completed, failed
+  errorMessage      String?
+  
+  // Metadata
+  ipAddress   String?  // For rate limiting (anonymized)
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  feedbacks   Feedback[]
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@index([category])
+  @@index([processingStatus])
+}
+
+// User feedback on results
+model Feedback {
+  id          String   @id @default(cuid())
+  claimId     String
+  claim       Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  rating      Int      // 1-5 stars
+  helpful     Boolean?
+  comment     String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([claimId])
+  @@index([userId])
+}

@@ -1,12 +1,13 @@
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json ./
+# Use npm install instead of npm ci (works without package-lock.json)
+RUN npm install
 
 # Build the application
 FROM base AS builder
@@ -14,7 +15,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN npm run build
+# Switch to PostgreSQL schema and generate Prisma client
+RUN npm run db:switch:postgres && npm run db:generate && npm run build
 
 # Production image
 FROM base AS runner

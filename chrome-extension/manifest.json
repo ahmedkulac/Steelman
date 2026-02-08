@@ -1,0 +1,12 @@
+{
+    "manifest_version": 3,
+    "name": "Steelman AI",
+    "version": "1.0",
+    "description": "Analyze and steelman any article you read.",
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "permissions": [
+        "activeTab"
+    ]
+}

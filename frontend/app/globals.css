@@ -1,27 +1,117 @@
+/**
+ * Global Styles
+ * 
+ * Tailwind CSS imports and global CSS variables for theming.
+ * Dark mode is controlled via the 'dark' class on the html element.
+ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Variables for theming */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Dark mode variables (applied when .dark class is present) */
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
 }
 
+/* Base body styles */
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* Utility classes */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
 }
+
+/* Custom animations */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Custom scrollbar for sidebar */
+.history-sidebar-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.history-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.dark .history-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.history-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dark .history-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Improve touch targets for mobile */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+/* Ensure interactive elements are easy to click */
+a[href], button {
+  cursor: pointer;
+}
+
+/* Remove tap highlight on mobile for better UX */
+a, button {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+

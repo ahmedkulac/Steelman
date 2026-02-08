@@ -6,11 +6,17 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
-// Example User model - customize for your hackathon project
+// Note: For production, switch back to PostgreSQL:
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+// User model
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -18,5 +24,57 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  claims      Claim[]
+  feedbacks   Feedback[]
+
   @@map("users")
+}
+
+// Claim submission for fact-checking
+model Claim {
+  id          String   @id @default(cuid())
+  content     String
+  category    String?  // politics, science, health, etc.
+  userId      String?  // Optional: for authenticated users
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // AI-generated results (stored as JSON string for SQLite compatibility)
+  steelmanArguments String? // JSON string of counter-arguments array
+  confidenceScore   Float?
+  processingStatus  String @default("pending") // pending, processing, completed, failed
+  errorMessage      String?
+  
+  // Metadata
+  ipAddress   String?  // For rate limiting (anonymized)
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  feedbacks   Feedback[]
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@index([category])
+  @@index([processingStatus])
+}
+
+// User feedback on results
+model Feedback {
+  id          String   @id @default(cuid())
+  claimId     String
+  claim       Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  rating      Int      // 1-5 stars
+  helpful     Boolean?
+  comment     String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([claimId])
+  @@index([userId])
 }

@@ -1,41 +1,59 @@
+/**
+ * Home Page
+ * 
+ * Main landing page of the STEELMAN application.
+ * Features:
+ * - URL input form
+ * - Minimalist design
+ * - Mobile-responsive design
+ */
+
+'use client';
+
+import { useState } from 'react';
+import ClaimInput, { InputMode } from '@/components/ClaimInput';
+
+/**
+ * Home Page Component
+ * 
+ * Renders the main page with:
+ * - Header and description
+ * - URL input form
+ * - Footer disclaimer
+ */
 export default function Home() {
+  const [mode, setMode] = useState<InputMode>('url');
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm">
-        <h1 className="text-4xl font-bold text-center mb-8">
-          🚀 Hackathon Starter
-        </h1>
-        <p className="text-center text-lg mb-4">
-          Your hackathon project is ready to go!
-        </p>
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 border rounded-lg">
-            <h2 className="font-semibold mb-2">⚡ Fast Setup</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Get started in minutes with pre-configured tools
-            </p>
+    <main className="min-h-screen bg-white dark:bg-black py-12 px-4 flex flex-col items-center justify-center">
+      <div className="w-full max-w-2xl mx-auto space-y-8">
+        {/* Header Section */}
+        <div className="text-center flex flex-col items-center">
+          {/* Logo */}
+          <div className="relative -mb-8 z-10">
+            <img src="/logo.png" alt="Steelman Logo" className="h-64 w-64 object-contain" />
           </div>
-          <div className="p-4 border rounded-lg">
-            <h2 className="font-semibold mb-2">🔧 Modern Stack</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Next.js, TypeScript, Express, and more
-            </p>
-          </div>
-          <div className="p-4 border rounded-lg">
-            <h2 className="font-semibold mb-2">🐳 Docker Ready</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Deploy anywhere with containerization
-            </p>
-          </div>
+          <h1 className="text-6xl md:text-8xl font-black text-black dark:text-white tracking-tighter uppercase leading-none relative z-0">
+            STEELMAN
+          </h1>
+          <p className="text-base md:text-lg text-gray-600 dark:text-gray-400 font-light max-w-xl mx-auto mt-6 transition-all duration-300">
+            {mode === 'url'
+              ? "The Steelman Argument is the practice of constructing the strongest, most persuasive version of an opponent's argument. Enter an article URL."
+              : "The Steelman Argument is the practice of constructing the strongest, most persuasive version of an opponent's argument. Enter a claim."
+            }
+          </p>
         </div>
-        <div className="mt-8 text-center">
-          <a
-            href="/api/health"
-            className="text-blue-600 hover:underline"
-            target="_blank"
-          >
-            Check API Health →
-          </a>
+
+        {/* Main Input Form */}
+        <div className="bg-transparent">
+          <ClaimInput onModeChange={setMode} />
+        </div>
+
+        {/* Footer Disclaimer */}
+        <div className="text-center text-xs text-gray-400 dark:text-gray-600 uppercase tracking-widest mt-16">
+          <p>
+            Designed for critical thinking. Verify all information.
+          </p>
         </div>
       </div>
     </main>

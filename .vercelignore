@@ -1,0 +1,64 @@
+# Vercel ignore file
+# Files and directories to exclude from Vercel deployment
+
+# Backend (deploy separately)
+backend/
+backend/**/*
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Scripts
+scripts/
+
+# Docker files
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# Environment files (use Vercel dashboard instead)
+.env
+.env.*
+!.env.example
+
+# Node modules (will be installed by Vercel)
+node_modules/
+
+# Build artifacts
+dist/
+build/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+test/
+
+# Prisma (backend only)
+**/prisma/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3

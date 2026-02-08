@@ -1,44 +1,123 @@
+/**
+ * Backend Server Entry Point
+ * 
+ * Express.js API server for the Fact Checker application.
+ * Handles claim submissions, AI processing, and result retrieval.
+ * 
+ * Features:
+ * - RESTful API endpoints
+ * - Rate limiting
+ * - Optional Redis caching
+ * - Error handling
+ * - CORS enabled
+ */
+
+import 'dotenv/config'; // Load env vars before anything else
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
+
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import apiRoutes from './routes';
+import { initRedis } from './utils/cache';
 
-dotenv.config();
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// ==================== Middleware ====================
+
+// Security headers
 app.use(helmet());
-app.use(cors());
+
+// Enable CORS for frontend
+// In production, specify allowed origins for security
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production'
+    ? (process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'])
+    : true, // Allow all origins in development
+  credentials: true,
+};
+app.use(cors(corsOptions));
+
+// Request logging
 app.use(morgan('dev'));
+
+// Parse JSON bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+// ==================== Routes ====================
+
+/**
+ * Root endpoint - API information
+ * GET /
+ */
+app.get('/', (_req, res) => {
+  res.json({
+    message: 'Fact Checker API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      api: '/api',
+      claims: '/api/claims',
+    },
+    frontend: 'http://localhost:3000',
   });
 });
 
-// API routes
+/**
+ * Health check endpoint
+ * GET /health
+ */
+app.get('/health', async (_req, res) => {
+  const { getCacheStats } = await import('./utils/cache');
+  const cacheStats = getCacheStats();
+
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    cache: cacheStats,
+  });
+});
+
+// API routes (all under /api prefix)
 app.use('/api', apiRoutes);
 
-// Error handling
+// ==================== Error Handling ====================
+
+// 404 handler (must be after all routes)
 app.use(notFoundHandler);
+
+// Global error handler (must be last)
 app.use(errorHandler);
 
-// Start server
+// ==================== Initialization ====================
+
+/**
+ * Initialize Redis (non-blocking, optional)
+ * 
+ * App works fine without Redis - caching will be disabled.
+ * This is called asynchronously and won't block server startup.
+ */
+initRedis().catch((error) => {
+  // Only log in development to reduce noise in production
+  if (process.env.NODE_ENV === 'development') {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('[Server] Redis initialization failed (optional):', errorMessage);
+  }
+});
+
+// ==================== Start Server ====================
+
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`[Server] 🚀 Running on http://localhost:${PORT}`);
+  console.log(`[Server] 📊 Health check: http://localhost:${PORT}/health`);
 });
 
 export default app;
