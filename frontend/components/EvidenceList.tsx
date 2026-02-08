@@ -24,17 +24,13 @@ export default function EvidenceList({ evidence }: EvidenceListProps) {
   }
 
   return (
-    <div>
-      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Supporting Evidence
-      </h4>
-      <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
-        {evidence.map((item, index) => (
-          <li key={index} className="text-sm">
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ul className="space-y-2">
+      {evidence.map((item, index) => (
+        <li key={index} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
+          <span className="flex-1 leading-relaxed">{item}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

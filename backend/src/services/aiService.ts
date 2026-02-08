@@ -81,12 +81,199 @@ export function generateCacheKey(claim: string): string {
 }
 
 /**
+ * Fix missing commas in arrays and objects using multiple strategies
+ * 
+ * Detects patterns where values are missing commas between them, such as:
+ * - "value1" "value2" -> "value1", "value2"
+ * - "value" ] -> "value", ]
+ * - 123 456 -> 123, 456
+ * - } { -> }, {
+ * 
+ * Uses character-by-character parsing to track string state and avoid
+ * modifying content inside strings. Runs multiple passes for better coverage.
+ * 
+ * @param jsonString - JSON string that may have missing commas
+ * @returns JSON string with commas added where needed
+ */
+function fixMissingCommas(jsonString: string): string {
+  // Strategy 1: Character-by-character analysis
+  let result = '';
+  let inString = false;
+  let escapeNext = false;
+  let depth = 0; // Track nesting depth
+  
+  for (let i = 0; i < jsonString.length; i++) {
+    const char = jsonString[i];
+    
+    if (escapeNext) {
+      result += char;
+      escapeNext = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      result += char;
+      escapeNext = true;
+      continue;
+    }
+    
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      continue;
+    }
+    
+    if (!inString) {
+      // Track depth
+      if (char === '{' || char === '[') depth++;
+      else if (char === '}' || char === ']') depth--;
+      
+      // Check if we need to add a comma before this character
+      const needsCommaBefore = (char === '}' || char === ']' || char === '{' || char === '[' || 
+                                char === '"' || /\d/.test(char) || char === 't' || char === 'f' || char === 'n');
+      
+      if (needsCommaBefore && result.length > 0) {
+        // Look backwards to find the end of the previous value
+        let j = result.length - 1;
+        // Skip whitespace
+        while (j >= 0 && /\s/.test(result[j])) j--;
+        
+        if (j >= 0) {
+          const lastChar = result[j];
+          let isValueEnd = false;
+          
+          // Check if last character is end of a value
+          if (lastChar === '"' || lastChar === '}' || lastChar === ']') {
+            isValueEnd = true;
+          } else if (/\d/.test(lastChar)) {
+            // Might be end of number - check backwards for number pattern
+            let k = j;
+            let isNumber = true;
+            let hasExp = false;
+            while (k >= 0 && (/\d/.test(result[k]) || result[k] === '.' || result[k] === 'e' || result[k] === 'E' || result[k] === '+' || result[k] === '-')) {
+              if (result[k] === 'e' || result[k] === 'E') hasExp = true;
+              k--;
+            }
+            // If we hit a non-number char that's a valid separator, it's an end
+            if (k < 0 || result[k] === ',' || result[k] === '[' || result[k] === '{' || result[k] === ':') {
+              isValueEnd = true;
+            }
+          } else {
+            // Check for true/false/null keywords (check backwards)
+            const checkTail = (len: number, match: string) => {
+              if (j >= len - 1) {
+                const tail = result.substring(j - len + 1, j + 1);
+                return tail === match;
+              }
+              return false;
+            };
+            
+            if (checkTail(4, 'true') || checkTail(5, 'false') || checkTail(4, 'null')) {
+              // Verify it's not part of a longer word by checking char before
+              const beforeIdx = j - (checkTail(5, 'false') ? 4 : 3);
+              if (beforeIdx < 0 || !/[a-zA-Z0-9_]/.test(result[beforeIdx])) {
+                isValueEnd = true;
+              }
+            }
+          }
+          
+          if (isValueEnd) {
+            // Check if there's already a comma before this value
+            let k = j - 1;
+            while (k >= 0 && /\s/.test(result[k])) k--;
+            
+            // Add comma if we don't already have one and we're not at start of array/object or after colon
+            if (k >= 0 && result[k] !== ',' && result[k] !== '[' && result[k] !== '{' && result[k] !== ':') {
+              // Special case: don't add comma if we're closing and opening braces/brackets of same type
+              if (!((char === '{' && lastChar === '}') || (char === '[' && lastChar === ']'))) {
+                result += ',';
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    result += char;
+  }
+  
+  // Strategy 2: Regex-based fix for common patterns (only outside strings)
+  // This is a fallback for cases the character-by-character approach might miss
+  let repaired = result;
+  let passCount = 0;
+  const maxPasses = 3;
+  
+  while (passCount < maxPasses) {
+    let changed = false;
+    let newResult = '';
+    inString = false;
+    escapeNext = false;
+    
+    for (let i = 0; i < repaired.length; i++) {
+      const char = repaired[i];
+      
+      if (escapeNext) {
+        newResult += char;
+        escapeNext = false;
+        continue;
+      }
+      
+      if (char === '\\') {
+        newResult += char;
+        escapeNext = true;
+        continue;
+      }
+      
+      if (char === '"') {
+        inString = !inString;
+        newResult += char;
+        continue;
+      }
+      
+      if (!inString) {
+        // Look for pattern: value whitespace value (missing comma)
+        // Check if current char starts a value and previous ended a value
+        if ((char === '"' || char === '{' || char === '[' || /\d/.test(char) || char === 't' || char === 'f' || char === 'n') && i > 0) {
+          // Look backwards through whitespace
+          let j = i - 1;
+          while (j >= 0 && /\s/.test(repaired[j])) j--;
+          
+          if (j >= 0) {
+            const prevChar = repaired[j];
+            // If previous char ends a value and we don't have a comma
+            if ((prevChar === '"' || prevChar === '}' || prevChar === ']' || /\d/.test(prevChar)) && 
+                repaired.substring(Math.max(0, j - 4), j + 1).match(/(true|false|null)$/) === null) {
+              // Check if comma already exists
+              let k = j - 1;
+              while (k >= 0 && /\s/.test(repaired[k])) k--;
+              if (k >= 0 && repaired[k] !== ',' && repaired[k] !== '[' && repaired[k] !== '{' && repaired[k] !== ':') {
+                newResult += ',';
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+      
+      newResult += char;
+    }
+    
+    if (!changed) break;
+    repaired = newResult;
+    passCount++;
+  }
+  
+  return repaired;
+}
+
+/**
  * Attempt to repair common JSON issues
  * 
  * Tries to fix common JSON malformation issues like:
  * - Unterminated strings
  * - Unescaped quotes
  * - Missing closing braces
+ * - Missing commas in arrays/objects
  * 
  * @param jsonString - Potentially malformed JSON string
  * @returns Repaired JSON string (may still be invalid)
@@ -96,6 +283,9 @@ function repairJson(jsonString: string): string {
 
   // Remove trailing commas before closing braces/brackets
   repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
+  
+  // Fix missing commas first (before other repairs that might change structure)
+  repaired = fixMissingCommas(repaired);
 
   // Fix unterminated strings by tracking string state
   let result = '';
@@ -403,6 +593,7 @@ function extractValidJson(content: string): string | null {
 
   // Try to find matching closing brace
   let braceCount = 0;
+  let bracketCount = 0;
   let inString = false;
   let escapeNext = false;
   let jsonEnd = -1;
@@ -430,20 +621,31 @@ function extractValidJson(content: string): string | null {
         braceCount++;
       } else if (char === '}') {
         braceCount--;
-        if (braceCount === 0) {
+        if (braceCount === 0 && bracketCount === 0) {
           jsonEnd = i;
           break;
         }
+      } else if (char === '[') {
+        bracketCount++;
+      } else if (char === ']') {
+        bracketCount--;
       }
     }
   }
 
   // If we found a complete JSON object, return it
   if (jsonEnd !== -1 && jsonEnd > jsonStart) {
-    return content.substring(jsonStart, jsonEnd + 1);
+    const candidate = content.substring(jsonStart, jsonEnd + 1);
+    // Try parsing to verify it's valid
+    try {
+      JSON.parse(candidate);
+      return candidate;
+    } catch {
+      // Not valid, continue to other strategies
+    }
   }
 
-  // Strategy 2: Try to find last complete JSON object
+  // Strategy 2: Try to find last complete JSON object by working backwards
   const lastBrace = content.lastIndexOf('}');
   if (lastBrace !== -1 && lastBrace > jsonStart) {
     // Try parsing from start to last brace
@@ -452,11 +654,25 @@ function extractValidJson(content: string): string | null {
       JSON.parse(candidate);
       return candidate;
     } catch {
-      // Continue to repair attempt
+      // Continue to next strategy
     }
   }
 
-  // Strategy 3: Return the content from first brace onwards (will be repaired)
+  // Strategy 3: Try to find the largest valid JSON substring
+  // Start from the last brace and work backwards to find a valid JSON object
+  if (lastBrace !== -1) {
+    for (let end = lastBrace; end > jsonStart; end--) {
+      const candidate = content.substring(jsonStart, end + 1);
+      try {
+        JSON.parse(candidate);
+        return candidate;
+      } catch {
+        // Continue searching
+      }
+    }
+  }
+
+  // Strategy 4: Return the content from first brace onwards (will be repaired)
   return content.substring(jsonStart);
 }
 
@@ -527,14 +743,22 @@ export async function generateSteelmanArgument(
       throw new Error('No response from AI service');
     }
 
-    // Clean up content - remove markdown code blocks if present
+    // When using responseMimeType: 'application/json', the response should already be valid JSON
+    // But we still need to handle edge cases where AI might add extra text
     let cleanedContent = content.trim();
 
-    // Remove markdown code blocks (case-insensitive)
+    // Remove markdown code blocks if present (shouldn't happen with JSON mode, but handle it)
     if (cleanedContent.match(/^```json/i)) {
       cleanedContent = cleanedContent.replace(/^```json\s*/i, '').replace(/\s*```\s*$/, '');
     } else if (cleanedContent.startsWith('```')) {
       cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```\s*$/, '');
+    }
+
+    // Extract JSON if there's extra text before/after
+    const jsonStart = cleanedContent.indexOf('{');
+    const jsonEnd = cleanedContent.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      cleanedContent = cleanedContent.substring(jsonStart, jsonEnd + 1);
     }
 
     // Clean up common JSON issues
@@ -590,74 +814,141 @@ export async function generateSteelmanArgument(
       // Strategy 2: Try to repair JSON (either extracted or original)
       if (!parsed) {
         const jsonToRepair = extractedJson || cleanedContent;
-        try {
-          const repaired = repairJson(jsonToRepair);
-          parsed = JSON.parse(repaired);
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[AI Service] Successfully repaired JSON');
-          }
-        } catch (repairError: unknown) {
-          // Strategy 3: Try aggressive string repair
+        let repairAttempts = 0;
+        const maxRepairAttempts = 5;
+        
+        // Try multiple repair strategies
+        while (!parsed && repairAttempts < maxRepairAttempts) {
+          repairAttempts++;
           try {
-            const aggressivelyRepaired = aggressivelyRepairStrings(jsonToRepair);
-            const finalRepaired = repairJson(aggressivelyRepaired);
-            parsed = JSON.parse(finalRepaired);
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[AI Service] Successfully repaired JSON with aggressive repair');
-            }
-          } catch (aggressiveError: unknown) {
-            // Final fallback - provide helpful error message
-            if (process.env.NODE_ENV === 'development') {
-              console.error('[AI Service] All JSON repair attempts failed');
-              console.error('[AI Service] Original error:', errorMessage);
-              console.error('[AI Service] Attempted to repair:', jsonToRepair.substring(0, 200));
-              if (errorMessage.includes('position')) {
-                const positionMatch = errorMessage.match(/position (\d+)/);
-                if (positionMatch) {
-                  const pos = parseInt(positionMatch[1]);
-                  const start = Math.max(0, pos - 100);
-                  const end = Math.min(jsonToRepair.length, pos + 100);
-                  console.error('[AI Service] Error position context:', jsonToRepair.substring(start, end));
-                }
+            let repaired = jsonToRepair;
+            
+            // Apply repairs in sequence
+            if (repairAttempts === 1) {
+              // First attempt: standard repair
+              repaired = repairJson(jsonToRepair);
+            } else if (repairAttempts === 2) {
+              // Second attempt: aggressive string repair first, then standard repair
+              repaired = aggressivelyRepairStrings(jsonToRepair);
+              repaired = repairJson(repaired);
+            } else if (repairAttempts === 3) {
+              // Third attempt: fix commas first, then other repairs
+              repaired = fixMissingCommas(jsonToRepair);
+              repaired = repairJson(repaired);
+            } else if (repairAttempts === 4) {
+              // Fourth attempt: aggressive string repair + comma fix + standard repair
+              repaired = aggressivelyRepairStrings(jsonToRepair);
+              repaired = fixMissingCommas(repaired);
+              repaired = repairJson(repaired);
+            } else {
+              // Fifth attempt: multiple passes of all repairs
+              repaired = jsonToRepair;
+              for (let pass = 0; pass < 3; pass++) {
+                repaired = aggressivelyRepairStrings(repaired);
+                repaired = fixMissingCommas(repaired);
+                repaired = repairJson(repaired);
               }
             }
-            throw new Error(
-              `Failed to parse AI response as JSON: ${errorMessage}. ` +
-              `The AI may have returned malformed JSON. Please try submitting the claim again. ` +
-              `If the issue persists, try rephrasing your claim or contact support.`
-            );
+            
+            parsed = JSON.parse(repaired);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[AI Service] Successfully repaired JSON on attempt ${repairAttempts}`);
+            }
+            break;
+          } catch (repairError: unknown) {
+            const repairErrorMessage = repairError instanceof Error ? repairError.message : 'Unknown error';
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`[AI Service] Repair attempt ${repairAttempts} failed:`, repairErrorMessage);
+            }
+            
+            // If this was the last attempt, throw error
+            if (repairAttempts >= maxRepairAttempts) {
+              // Final fallback - provide helpful error message
+              if (process.env.NODE_ENV === 'development') {
+                console.error('[AI Service] All JSON repair attempts failed');
+                console.error('[AI Service] Original error:', errorMessage);
+                console.error('[AI Service] Content length:', jsonToRepair.length);
+                console.error('[AI Service] First 500 chars:', jsonToRepair.substring(0, 500));
+                console.error('[AI Service] Last 500 chars:', jsonToRepair.substring(Math.max(0, jsonToRepair.length - 500)));
+                if (errorMessage.includes('position')) {
+                  const positionMatch = errorMessage.match(/position (\d+)/);
+                  if (positionMatch) {
+                    const pos = parseInt(positionMatch[1]);
+                    const start = Math.max(0, pos - 150);
+                    const end = Math.min(jsonToRepair.length, pos + 150);
+                    console.error('[AI Service] Error position context (position', pos, '):');
+                    console.error(jsonToRepair.substring(start, end));
+                    console.error(' '.repeat(Math.min(150, pos - start)) + '^');
+                  }
+                }
+              }
+              throw new Error(
+                `Failed to parse AI response as JSON: ${errorMessage}. ` +
+                `The AI may have returned malformed JSON. Please try submitting the claim again. ` +
+                `If the issue persists, try rephrasing your claim or contact support.`
+              );
+            }
           }
         }
       }
     }
     const processingTime = Date.now() - startTime;
 
+    // Validate parsed structure
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Invalid JSON structure: response is not an object');
+    }
+
     // Validate and transform the response
     // Handle different response formats for robustness
+    let counterArguments: CounterArgument[] = [];
+    
+    // Handle array of counter-arguments
+    if (Array.isArray(parsed.counterArguments)) {
+      counterArguments = parsed.counterArguments;
+    } 
+    // Handle single counter-argument object
+    else if (parsed.argument || parsed.counterArgument) {
+      counterArguments = [{
+        argument: parsed.argument || parsed.counterArgument || '',
+        reasoning: parsed.reasoning || '',
+        evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
+        strength: typeof parsed.strength === 'number' ? parsed.strength : (typeof parsed.strengthScore === 'number' ? parsed.strengthScore : 5),
+      }];
+    }
+    // Handle single counter-argument in root
+    else if (parsed.counterArgument) {
+      counterArguments = [parsed];
+    }
+    // Fallback: empty array if nothing found
+    else {
+      counterArguments = [];
+    }
+
+    // Validate each counter-argument structure
+    counterArguments = counterArguments
+      .filter(arg => arg && typeof arg === 'object')
+      .map(arg => ({
+        argument: typeof arg.argument === 'string' ? arg.argument : '',
+        reasoning: typeof arg.reasoning === 'string' ? arg.reasoning : '',
+        evidence: Array.isArray(arg.evidence) ? arg.evidence.filter(e => typeof e === 'string') : [],
+        strength: typeof arg.strength === 'number' ? Math.max(1, Math.min(10, arg.strength)) : 5,
+      }))
+      .filter(arg => arg.argument.length > 0); // Remove empty arguments
+
+    // Ensure we have at least one valid counter-argument
+    if (counterArguments.length === 0) {
+      throw new Error('No valid counter-arguments found in AI response');
+    }
+
     const response: SteelmanResponse = {
-      counterArguments: parsed.counterArguments || [
-        {
-          argument: parsed.argument || parsed.counterArgument || '',
-          reasoning: parsed.reasoning || '',
-          evidence: parsed.evidence || [],
-          strength: parsed.strength || parsed.strengthScore || 5,
-        },
-      ],
-      confidence: parsed.confidence || 0.5,
-      relatedTopics: parsed.relatedTopics || [],
+      counterArguments,
+      confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.5,
+      relatedTopics: Array.isArray(parsed.relatedTopics) ? parsed.relatedTopics.filter(t => typeof t === 'string') : [],
       processingTime,
     };
 
-    // Ensure counterArguments is always an array
-    if (!Array.isArray(response.counterArguments)) {
-      response.counterArguments = [response.counterArguments];
-    }
-
-    // Validate and clamp strength scores to 1-10 range
-    response.counterArguments = response.counterArguments.map((arg) => ({
-      ...arg,
-      strength: Math.max(1, Math.min(10, arg.strength || 5)),
-    }));
+    // Strength scores are already validated and clamped in the mapping above
 
     // Search for sources to support the claim and counter-arguments
     try {
@@ -1028,22 +1319,119 @@ Generate your analysis now as valid JSON only:`;
     const response = await result.response;
     const text = response.text();
 
-    // Parse JSON (reuse existing logic or simple parse if robust)
+    // Parse JSON with robust error handling (similar to generateSteelmanArgument)
     let parsed;
+    let cleanedText = text.trim();
+
+    // Remove markdown code blocks if present
+    if (cleanedText.match(/^```json/i)) {
+      cleanedText = cleanedText.replace(/^```json\s*/i, '').replace(/\s*```\s*$/, '');
+    } else if (cleanedText.startsWith('```')) {
+      cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```\s*$/, '');
+    }
+
+    // Extract JSON if there's extra text
+    const jsonStart = cleanedText.indexOf('{');
+    const jsonEnd = cleanedText.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      cleanedText = cleanedText.substring(jsonStart, jsonEnd + 1);
+    }
+
     try {
-      parsed = JSON.parse(text);
-    } catch (e) {
-      // Simple cleanup attempt
-      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      parsed = JSON.parse(cleanText);
+      parsed = JSON.parse(cleanedText);
+    } catch (parseError: unknown) {
+      // Try extraction and repair strategies
+      let extractedJson = extractValidJson(cleanedText);
+      if (extractedJson && extractedJson !== cleanedText) {
+        try {
+          parsed = JSON.parse(extractedJson);
+        } catch {
+          // Continue to repair attempt
+        }
+      }
+
+      // Try multiple repair strategies if still not parsed
+      if (!parsed) {
+        const jsonToRepair = extractedJson || cleanedText;
+        let repairAttempts = 0;
+        const maxRepairAttempts = 5;
+        
+        while (!parsed && repairAttempts < maxRepairAttempts) {
+          repairAttempts++;
+          try {
+            let repaired = jsonToRepair;
+            
+            // Apply repairs in sequence
+            if (repairAttempts === 1) {
+              repaired = repairJson(jsonToRepair);
+            } else if (repairAttempts === 2) {
+              repaired = aggressivelyRepairStrings(jsonToRepair);
+              repaired = repairJson(repaired);
+            } else if (repairAttempts === 3) {
+              repaired = fixMissingCommas(jsonToRepair);
+              repaired = repairJson(repaired);
+            } else if (repairAttempts === 4) {
+              repaired = aggressivelyRepairStrings(jsonToRepair);
+              repaired = fixMissingCommas(repaired);
+              repaired = repairJson(repaired);
+            } else {
+              repaired = jsonToRepair;
+              for (let pass = 0; pass < 3; pass++) {
+                repaired = aggressivelyRepairStrings(repaired);
+                repaired = fixMissingCommas(repaired);
+                repaired = repairJson(repaired);
+              }
+            }
+            
+            parsed = JSON.parse(repaired);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[AI Service] Successfully repaired article JSON on attempt ${repairAttempts}`);
+            }
+            break;
+          } catch (repairError: unknown) {
+            if (repairAttempts >= maxRepairAttempts) {
+              const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown error';
+              if (process.env.NODE_ENV === 'development') {
+                console.error('[AI Service] All article JSON repair attempts failed');
+                console.error('[AI Service] Error:', errorMessage);
+                console.error('[AI Service] Content preview:', jsonToRepair.substring(0, 500));
+              }
+              throw new Error(
+                `Failed to parse article analysis JSON: ${errorMessage}. ` +
+                `Please try analyzing the article again.`
+              );
+            }
+          }
+        }
+      }
+    }
+
+    // Validate parsed structure
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Invalid JSON structure: response is not an object');
+    }
+
+    // Validate and sanitize claims array
+    let claims = [];
+    if (Array.isArray(parsed.claims)) {
+      claims = parsed.claims
+        .filter(claim => claim && typeof claim === 'object')
+        .map(claim => ({
+          claim: typeof claim.claim === 'string' ? claim.claim : (typeof claim.quote === 'string' ? claim.quote : ''),
+          quote: typeof claim.quote === 'string' ? claim.quote : (typeof claim.claim === 'string' ? claim.claim : ''),
+          counterArgument: typeof claim.counterArgument === 'string' ? claim.counterArgument : '',
+          reasoning: typeof claim.reasoning === 'string' ? claim.reasoning : '',
+          strength: typeof claim.strength === 'number' ? Math.max(1, Math.min(10, claim.strength)) : 5,
+        }))
+        .filter(claim => claim.claim.length > 0 && claim.counterArgument.length > 0);
     }
 
     const analysisResponse: ArticleAnalysisResponse = {
-      summary: parsed.summary || 'No summary available',
-      claims: parsed.claims || [],
-      factChecks: parsed.factChecks || [],
-      biasScore: parsed.biasScore || 5,
-      biasAnalysis: parsed.biasAnalysis || 'No bias analysis available',
+      summary: typeof parsed.summary === 'string' ? parsed.summary : 'No summary available',
+      claims,
+      factChecks: Array.isArray(parsed.factChecks) ? parsed.factChecks.filter(fc => typeof fc === 'object') : [],
+      biasScore: typeof parsed.biasScore === 'number' ? Math.max(0, Math.min(10, parsed.biasScore)) : 5,
+      biasAnalysis: typeof parsed.biasAnalysis === 'string' ? parsed.biasAnalysis : 'No bias analysis available',
       processingTime: Date.now() - startTime,
     };
 
