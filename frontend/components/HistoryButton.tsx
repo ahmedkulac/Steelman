@@ -28,10 +28,10 @@ interface CachedClaimEntry {
 
 export default function HistoryButton() {
   // ===== State Management =====
-  
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
+
   /**
    * Initialize with empty state to ensure server/client hydration match.
    * localStorage is only accessed in useEffect (client-side only).
@@ -40,13 +40,13 @@ export default function HistoryButton() {
    */
   const [cacheCount, setCacheCount] = useState(0);
   const [recentClaims, setRecentClaims] = useState<CachedClaimEntry[]>([]);
-  
+
   // Refs for dropdown and button elements (for click-outside detection)
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   // ===== Effects =====
-  
+
   /**
    * Load cached data and set up real-time updates.
    * 
@@ -66,7 +66,7 @@ export default function HistoryButton() {
       try {
         const stats = getCacheStats();
         setCacheCount(stats.entries);
-        
+
         // Load recent claims for dropdown - localStorage access is synchronous
         const claims = getAllCachedClaims<Claim>();
         // Sort by most recent (newest first) and take top 3
@@ -149,7 +149,7 @@ export default function HistoryButton() {
   }, [isDropdownOpen]);
 
   // ===== Event Handlers =====
-  
+
   /**
    * Handle button click:
    * - If there are cached claims: toggle dropdown
@@ -164,12 +164,12 @@ export default function HistoryButton() {
   };
 
   // ===== Helper Functions =====
-  
+
   // Using shared date utility for consistent formatting
   const formatDate = formatRelativeDate;
 
   // ===== Render =====
-  
+
   return (
     <>
       <div className="relative">
@@ -196,14 +196,9 @@ export default function HistoryButton() {
               />
             </svg>
             <span className="hidden sm:inline">History</span>
-            {/* Count badge - positioned on the right */}
-            {cacheCount > 0 && (
-              <span className="flex items-center justify-center min-w-[1.25rem] h-5 px-1 text-xs font-bold text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded-full animate-[zoomIn_0.2s_ease-out]">
-                {cacheCount > 99 ? '99+' : cacheCount}
-              </span>
-            )}
+
           </div>
-          
+
           {/* Animated underline */}
           <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gray-900 dark:bg-gray-100 transition-all duration-300 group-hover:w-full"></span>
         </button>

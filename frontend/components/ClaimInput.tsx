@@ -228,45 +228,31 @@ export default function ClaimInput({ onModeChange }: ClaimInputProps) {
         mode === 'claim' && (
           <form onSubmit={claimForm.handleSubmit(onSubmitClaim)} className="space-y-6">
             <div className="relative">
-              <textarea
-                id="claim-input"
-                aria-label="Enter your claim"
-                {...claimForm.register('input')}
-                rows={4}
-                className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:outline-none transition-all duration-300 ease-out text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:scale-[1.01] focus:shadow-sm peer"
-                placeholder="Enter your claim or statement to fact-check..."
-                disabled={isSubmitting}
-              />
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 transform scale-x-0 transition-transform duration-300 origin-left peer-focus:scale-x-100" />
+              <div className="relative">
+                <input
+                  type="text"
+                  id="claim-input"
+                  aria-label="Enter your claim"
+                  {...claimForm.register('input')}
+                  className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:outline-none transition-all duration-300 ease-out text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:scale-[1.01] focus:shadow-sm peer"
+                  placeholder="Enter your claim or statement to fact-check..."
+                  disabled={isSubmitting}
+                />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 transform scale-x-0 transition-transform duration-300 origin-left peer-focus:scale-x-100" />
+              </div>
               <div className="mt-1">
                 {claimForm.formState.errors.input && (
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {claimForm.formState.errors.input.message}
                   </p>
                 )}
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                  Supports simple statements, complex arguments, and quotes.
+                </p>
               </div>
             </div>
 
-            {/* Optional Context Field */}
-            <div className="relative">
-              <textarea
-                id="context-input"
-                aria-label="Additional context (optional)"
-                {...claimForm.register('context')}
-                rows={2}
-                className="w-full px-4 py-3 border-b-2 border-gray-300 dark:border-gray-600 bg-transparent focus:outline-none transition-all duration-300 ease-out text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:scale-[1.01] focus:shadow-sm peer"
-                placeholder="Additional context (optional)"
-                disabled={isSubmitting}
-              />
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-gray-100 transform scale-x-0 transition-transform duration-300 origin-left peer-focus:scale-x-100" />
-              <div className="mt-1">
-                {claimForm.formState.errors.context && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {claimForm.formState.errors.context.message}
-                  </p>
-                )}
-              </div>
-            </div>
+
 
             {/* Error Message Display */}
             {error && (
