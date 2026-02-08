@@ -42,7 +42,7 @@ router.post('/', async (req: Request, res: Response) => {
         if (isSocialMedia) {
             try {
                 const socialContent = await extractSocialMediaContent(url);
-                
+
                 // Additional validation: ensure content has meaningful text
                 const textContent = socialContent.content.trim();
                 if (!textContent || textContent.length < 10) {
@@ -52,7 +52,7 @@ router.post('/', async (req: Request, res: Response) => {
                         suggestion: 'Only posts with captions, descriptions, or text content can be analyzed. Image-only or video-only posts without text cannot be processed.',
                     });
                 }
-                
+
                 title = socialContent.title;
                 content = textContent;
                 byline = socialContent.author;
@@ -72,7 +72,7 @@ router.post('/', async (req: Request, res: Response) => {
             } catch (socialError: unknown) {
                 const errorMessage = socialError instanceof Error ? socialError.message : 'Unknown error';
                 console.error(`[Analyze] Failed to extract ${platform} content:`, errorMessage);
-                
+
                 // Check if error is about insufficient text content
                 if (errorMessage.includes('sufficient text') || errorMessage.includes('does not contain')) {
                     return res.status(422).json({
@@ -81,7 +81,7 @@ router.post('/', async (req: Request, res: Response) => {
                         suggestion: 'Only posts with captions, descriptions, or text content can be analyzed. Image-only or video-only posts without text cannot be processed.',
                     });
                 }
-                
+
                 // Return helpful error message for other errors
                 return res.status(422).json({
                     error: `Failed to extract ${platform} content`,
@@ -92,32 +92,61 @@ router.post('/', async (req: Request, res: Response) => {
         } else {
             // Handle regular articles using Readability
             try {
-                // 1. Fetch HTML with enhanced headers to bypass basic bot detection
-                const response = await axios.get(url, {
-                    headers: {
-                        // Enhanced browser headers to mimic real user
-                        'User-Agent':
-                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Accept-Encoding': 'gzip, deflate, br',
-                        'DNT': '1',
-                        'Connection': 'keep-alive',
-                        'Upgrade-Insecure-Requests': '1',
-                        'Sec-Fetch-Dest': 'document',
-                        'Sec-Fetch-Mode': 'navigate',
-                        'Sec-Fetch-Site': 'none',
-                        'Cache-Control': 'max-age=0',
-                    },
-                    timeout: 20000, // 20s timeout for slower sites
-                    maxRedirects: 5,
-                    validateStatus: (status) => status < 500, // Accept 4xx but log them
-                });
+                // User-Agent rotation strategy
+                const userAgents = [
+                    // Desktop Chrome (High value user)
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    // Googlebot (Often whitelisted)
+                    'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+                    // Bingbot
+                    'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
+                ];
+
+                let response;
+                let htmlContent = '';
+                let fetchError;
+
+                // Try fetching with different User-Agents
+                for (const ua of userAgents) {
+                    try {
+                        response = await axios.get(url, {
+                            headers: {
+                                'User-Agent': ua,
+                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                                'Accept-Language': 'en-US,en;q=0.9',
+                                'Accept-Encoding': 'gzip, deflate, br',
+                                'DNT': '1',
+                                'Connection': 'keep-alive',
+                                'Upgrade-Insecure-Requests': '1',
+                                'Sec-Fetch-Dest': 'document',
+                                'Sec-Fetch-Mode': 'navigate',
+                                'Sec-Fetch-Site': 'none',
+                                'Cache-Control': 'max-age=0',
+                                'Referer': 'https://www.google.com/',
+                            },
+                            timeout: 15000,
+                            maxRedirects: 5,
+                            validateStatus: (status) => status < 500,
+                        });
+
+                        if (response.status === 200 && typeof response.data === 'string' && response.data.length > 500) {
+                            htmlContent = response.data;
+                            break;
+                        }
+                    } catch (err: any) {
+                        fetchError = err;
+                        console.warn(`[Analyze] Failed fetch with UA "${ua.substring(0, 20)}...": ${err.message}`);
+                        // Continue to next UA
+                    }
+                }
+
+                if (!htmlContent) {
+                    throw fetchError || new Error('Failed to fetch content with all User-Agents');
+                }
 
                 // Check for common paywall indicators
-                const htmlContent = typeof response.data === 'string' ? response.data : '';
                 const lowerContent = htmlContent.toLowerCase();
-                
+
                 // Check domain-specific paywall patterns FIRST (most reliable)
                 const domain = new URL(url).hostname.toLowerCase();
                 const paywalledDomains = [
@@ -129,11 +158,11 @@ router.post('/', async (req: Request, res: Response) => {
                     'bloomberg.com',
                     'reuters.com', // Sometimes paywalled
                 ];
-                
-                const isPaywalledDomain = paywalledDomains.some(paywallDomain => 
+
+                const isPaywalledDomain = paywalledDomains.some(paywallDomain =>
                     domain.includes(paywallDomain)
                 );
-                
+
                 // Check for paywall indicators in content
                 const paywallIndicators = [
                     'subscribe to continue reading',
@@ -150,15 +179,15 @@ router.post('/', async (req: Request, res: Response) => {
                     'you\'ve reached your article limit',
                     'continue reading',
                 ];
-                
-                const hasPaywallText = paywallIndicators.some(indicator => 
+
+                const hasPaywallText = paywallIndicators.some(indicator =>
                     lowerContent.includes(indicator)
                 );
-                
+
                 // Parse HTML once
                 const dom = new JSDOM(htmlContent, { url });
                 const document = dom.window.document;
-                
+
                 // Also check for common paywall class/ID patterns in HTML
                 const paywallSelectors = [
                     '[class*="paywall"]',
@@ -169,7 +198,7 @@ router.post('/', async (req: Request, res: Response) => {
                     '.paywall',
                     '#paywall',
                 ];
-                
+
                 const hasPaywallElement = paywallSelectors.some(selector => {
                     try {
                         return document.querySelector(selector) !== null;
@@ -177,10 +206,10 @@ router.post('/', async (req: Request, res: Response) => {
                         return false;
                     }
                 });
-                
+
                 // If it's a known paywalled domain, treat it as paywalled immediately
                 const detectedPaywall = isPaywalledDomain || hasPaywallText || hasPaywallElement;
-                
+
                 // For known paywalled domains, return error immediately
                 if (isPaywalledDomain) {
                     return res.status(422).json({
@@ -197,9 +226,9 @@ router.post('/', async (req: Request, res: Response) => {
                 if (!article) {
                     // Try to extract title from meta tags as fallback
                     const titleMeta = document.querySelector('meta[property="og:title"]') ||
-                                     document.querySelector('title');
+                        document.querySelector('title');
                     const extractedTitle = titleMeta?.getAttribute('content') || titleMeta?.textContent || '';
-                    
+
                     if (detectedPaywall) {
                         return res.status(422).json({
                             error: 'Article is behind a paywall',
@@ -207,7 +236,7 @@ router.post('/', async (req: Request, res: Response) => {
                             suggestion: 'Please copy and paste the article text directly as a claim (use the "Claim" mode instead of "URL" mode), or try a publicly accessible article.',
                         });
                     }
-                    
+
                     return res.status(422).json({
                         error: 'Failed to extract article content',
                         details: extractedTitle ? `Found title: "${extractedTitle}" but could not extract article body.` : 'Could not parse article structure.',
@@ -218,7 +247,7 @@ router.post('/', async (req: Request, res: Response) => {
                 // Check if extracted content is too short (might be paywall)
                 const extractedContent = article.textContent || '';
                 const contentLength = extractedContent.trim().length;
-                
+
                 // If content is very short and we detected paywall indicators, it's likely paywalled
                 if (contentLength < 100 && detectedPaywall) {
                     return res.status(422).json({
@@ -227,7 +256,7 @@ router.post('/', async (req: Request, res: Response) => {
                         suggestion: 'Please copy and paste the article text directly as a claim (use the "Claim" mode instead of "URL" mode), or try a publicly accessible article.',
                     });
                 }
-                
+
                 // If content is suspiciously short even without explicit paywall detection
                 if (contentLength < 50) {
                     return res.status(422).json({
@@ -241,12 +270,12 @@ router.post('/', async (req: Request, res: Response) => {
                 content = extractedContent;
                 byline = article.byline || undefined;
                 excerpt = article.excerpt || undefined;
-                
+
                 // Additional validation: ensure we got meaningful content
                 if (!content || content.trim().length < 50) {
                     return res.status(422).json({
                         error: 'Insufficient article content extracted',
-                        details: hasPaywall 
+                        details: hasPaywall
                             ? 'This article appears to be behind a paywall.'
                             : 'Could not extract enough content from the article.',
                         suggestion: hasPaywall
@@ -257,7 +286,7 @@ router.post('/', async (req: Request, res: Response) => {
             } catch (articleError: unknown) {
                 const errorMessage = articleError instanceof Error ? articleError.message : 'Unknown error';
                 console.error('[Analyze] Failed to extract article content:', errorMessage);
-                
+
                 // Check for specific error types
                 let suggestion = 'Please check the URL and ensure the article is accessible.';
                 if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
@@ -267,7 +296,7 @@ router.post('/', async (req: Request, res: Response) => {
                 } else if (errorMessage.includes('timeout')) {
                     suggestion = 'The request timed out. The website may be slow or blocking automated requests.';
                 }
-                
+
                 return res.status(422).json({
                     error: 'Failed to extract article content',
                     details: errorMessage,

@@ -8,7 +8,11 @@ import HistoryButton from "@/components/HistoryButton";
 import AboutButton from "@/components/AboutButton";
 import { themeScript } from "./theme-script";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 export const metadata: Metadata = {
   title: "Steelman - Article Analysis",
@@ -31,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.variable} font-sans`}>
         {/* Inline script to set theme before React hydration - prevents FOUC */}
         <Script
           id="theme-init"
