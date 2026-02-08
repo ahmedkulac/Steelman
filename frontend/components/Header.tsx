@@ -29,9 +29,11 @@ export default function Header() {
           {/* App Title */}
           <Link
             href="/"
-            className="text-xl font-bold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="flex items-center gap-3 text-xl font-bold text-gray-900 dark:text-gray-100 hover:text-gray-600 dark:hover:text-gray-300 transition-colors tracking-widest uppercase"
           >
-            Fact Checker
+            {/* Logo */}
+            <img src="/logo.png" alt="Steelman Logo" className="h-8 w-8 object-contain" />
+            STEELMAN
           </Link>
 
           {/* Theme Toggle */}
