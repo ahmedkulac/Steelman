@@ -36,14 +36,26 @@ export interface SteelmanRequest {
 }
 
 /**
+ * Evidence item with optional associated sources
+ */
+export interface EvidenceItem {
+  text: string; // The evidence point text
+  sources?: Array<{ // Sources supporting this specific evidence point
+    title: string;
+    url: string;
+    snippet?: string;
+  }>;
+}
+
+/**
  * Counter-argument structure returned by AI
  */
 export interface CounterArgument {
   argument: string; // Main counter-argument text
   reasoning: string; // Why this counter-argument is strong
-  evidence?: string[]; // Supporting evidence points
+  evidence?: (string | EvidenceItem)[]; // Supporting evidence points (can be strings or objects with sources)
   strength: number; // Strength score 1-10 (10 = strongest)
-  sources?: Array<{ // Online sources supporting this counter-argument
+  sources?: Array<{ // Online sources supporting this counter-argument (general sources)
     title: string;
     url: string;
     snippet?: string;
@@ -714,10 +726,18 @@ export async function generateSteelmanArgument(
       generationConfig: {
         temperature: 0.75, // Slightly higher for better argument diversity while maintaining consistency
         maxOutputTokens: parseInt(process.env.AI_MAX_TOKENS || '2000'),
-        responseMimeType: 'application/json', // Force JSON response
+        responseMimeType: 'application/json', // Force JSON response - this enforces JSON format
       },
       systemInstruction:
         'You are an expert fact-checker and truth-teller specializing in aggressive, evidence-based counter-arguments. Your mission is to challenge claims with hard facts and compelling logic that change people\'s perceptions.\n\n' +
+        'CRITICAL: YOU MUST ALWAYS OUTPUT VALID JSON. THIS IS NON-NEGOTIABLE.\n' +
+        '- Your response MUST be valid JSON that can be parsed by JSON.parse()\n' +
+        '- NO markdown code blocks, NO explanatory text before or after JSON\n' +
+        '- NO trailing commas in arrays or objects\n' +
+        '- ALL strings must be properly quoted and escaped\n' +
+        '- ALL opening braces { and brackets [ must have matching closing braces } and brackets ]\n' +
+        '- EVERY quote character " inside strings must be escaped as \\"\n' +
+        '- Validate your JSON structure before responding\n\n' +
         'CORE PRINCIPLES:\n' +
         '1. Truth First: Prioritize factual accuracy and verifiable evidence above all else\n' +
         '2. Direct Confrontation: Challenge claims directly and forcefully with evidence, not gentle suggestions\n' +
@@ -729,9 +749,9 @@ export async function generateSteelmanArgument(
         '- Grounded in verifiable facts, studies, and data\n' +
         '- Designed to challenge and change perceptions\n' +
         '- Structurally sound and logically rigorous\n' +
-        '- Structured as valid JSON without markdown formatting\n' +
+        '- Structured as VALID JSON (this is critical - invalid JSON will cause errors)\n' +
         '- Free of logical fallacies, but unafraid to be assertive\n\n' +
-        'Remember: Your goal is to present the truth so compellingly that it changes minds. Be aggressive with facts, direct with logic, and unapologetic about challenging false or misleading claims.',
+        'Remember: Your goal is to present the truth so compellingly that it changes minds. Be aggressive with facts, direct with logic, and unapologetic about challenging false or misleading claims. But above all, ensure your JSON is valid and parseable.',
     });
 
     // Generate content from AI
@@ -962,22 +982,61 @@ export async function generateSteelmanArgument(
         }));
       }
 
-      // Search for sources supporting each counter-argument
+      // Search for sources supporting each counter-argument and its evidence
       const counterArgumentSourcesPromises = response.counterArguments.map(async (arg) => {
-        const sources = await searchCounterArgumentSources(arg.argument, request.claim);
-        return sources.map(source => ({
-          title: source.title,
-          url: source.url,
-          snippet: source.snippet,
-        }));
+        // Search for general sources for the counter-argument
+        const generalSources = await searchCounterArgumentSources(arg.argument, request.claim);
+        
+        // Search for sources for each evidence item
+        const evidenceWithSources = await Promise.all(
+          (arg.evidence || []).map(async (evidenceItem) => {
+            // Handle both string and object evidence formats
+            const evidenceText = typeof evidenceItem === 'string' ? evidenceItem : evidenceItem.text;
+            
+            // Search for sources specific to this evidence item
+            const evidenceSources = await searchCounterArgumentSources(evidenceText, request.claim);
+            
+            // Return evidence item with sources
+            if (typeof evidenceItem === 'string') {
+              return {
+                text: evidenceItem,
+                sources: evidenceSources.map(source => ({
+                  title: source.title,
+                  url: source.url,
+                  snippet: source.snippet,
+                })),
+              };
+            } else {
+              // Already an object, just add sources
+              return {
+                ...evidenceItem,
+                sources: evidenceSources.map(source => ({
+                  title: source.title,
+                  url: source.url,
+                  snippet: source.snippet,
+                })),
+              };
+            }
+          })
+        );
+        
+        return {
+          generalSources: generalSources.map(source => ({
+            title: source.title,
+            url: source.url,
+            snippet: source.snippet,
+          })),
+          evidenceWithSources,
+        };
       });
 
-      const counterArgumentSources = await Promise.all(counterArgumentSourcesPromises);
+      const counterArgumentSourcesData = await Promise.all(counterArgumentSourcesPromises);
 
-      // Add sources to each counter-argument
+      // Add sources to each counter-argument and link sources to evidence
       response.counterArguments = response.counterArguments.map((arg, index) => ({
         ...arg,
-        sources: counterArgumentSources[index] || [],
+        sources: counterArgumentSourcesData[index].generalSources || [],
+        evidence: counterArgumentSourcesData[index].evidenceWithSources || arg.evidence || [],
       }));
     } catch (searchError) {
       // Log search errors but don't fail the request
@@ -1110,33 +1169,79 @@ QUALITY STANDARDS:
 - Focus on arguments that will make the reader reconsider their position
 - Note: Sources will be added automatically after your response, so you don't need to include them in the JSON
 
-CRITICAL JSON FORMATTING REQUIREMENTS:
-- Output ONLY valid JSON - no text before or after the JSON object
-- All strings must be properly escaped:
-  - Use \\" for quotes inside strings: "argument": "He said \\"hello\\""
-  - Use \\n for newlines: "argument": "Line 1\\nLine 2"
-  - Escape backslashes: "path": "C:\\\\Users\\\\file.txt"
-- Every opening quote " must have a matching closing quote "
-- No trailing commas after the last item in arrays or objects
-- All braces { } and brackets [ ] must be properly closed and balanced
-- URLs must be complete strings: "evidence": ["https://example.com/article"]
-- Validate your JSON before responding - ensure it can be parsed
+CRITICAL JSON FORMATTING REQUIREMENTS (READ CAREFULLY - THIS IS MANDATORY):
+⚠️ YOUR RESPONSE MUST BE VALID JSON THAT CAN BE PARSED BY JSON.parse() ⚠️
 
-SPECIAL HANDLING FOR URLs:
-- If the claim is a URL or you include URLs in evidence/relatedTopics, ensure URLs are properly enclosed in quotes
-- URLs must be complete strings: "evidence": ["https://example.com/path"] is correct
-- URLs must end with a closing quote before commas, brackets, or braces
-- Example: "evidence": ["https://www.example.com/article"] is correct
-- Example: "evidence": ["https://www.example.com/article] is WRONG (missing closing quote)
-- Never leave URLs unquoted or partially quoted in JSON arrays or objects
+1. OUTPUT FORMAT:
+   - Output ONLY valid JSON - NO text before or after the JSON object
+   - NO markdown code blocks (no code fences)
+   - NO explanatory text like "Here is the JSON:" or "Response:"
+   - Start directly with { and end with }
+
+2. STRING ESCAPING (CRITICAL):
+   - Use \\" for quotes inside strings: "argument": "He said \\"hello\\""
+   - Use \\n for newlines: "argument": "Line 1\\nLine 2"
+   - Escape backslashes: "path": "C:\\\\Users\\\\file.txt"
+   - Every opening quote " MUST have a matching closing quote "
+   - If a string contains quotes, you MUST escape them: \\"
+
+3. COMMAS AND STRUCTURE:
+   - NO trailing commas after the last item in arrays or objects
+   - Correct: {"key": "value"}  or  [1, 2, 3]
+   - WRONG: {"key": "value",}  or  [1, 2, 3,]
+   - Every array/object item must be separated by commas (except the last one)
+
+4. BRACES AND BRACKETS:
+   - ALL opening braces { and brackets [ MUST have matching closing braces } and brackets ]
+   - Count your braces: every { needs a }, every [ needs a ]
+   - Ensure proper nesting: { "array": [1, 2, 3] } is correct
+
+5. URLS IN JSON:
+   - URLs must be complete strings: "evidence": ["https://example.com/article"]
+   - URLs must be enclosed in quotes: "https://example.com" not https://example.com
+   - URLs must end with closing quote before commas/brackets: ["https://example.com"] not ["https://example.com]
+   - Example CORRECT: "evidence": ["https://www.example.com/article"]
+   - Example WRONG: "evidence": ["https://www.example.com/article] (missing closing quote)
+
+6. VALIDATION CHECKLIST:
+   Before responding, verify:
+   ✓ Every " has a matching "
+   ✓ Every { has a matching }
+   ✓ Every [ has a matching ]
+   ✓ No trailing commas
+   ✓ All quotes inside strings are escaped as \\"
+   ✓ Your JSON can be parsed by JSON.parse()
+
+COMMON JSON ERRORS TO AVOID:
+❌ Missing comma between array/object items: {"a":1 "b":2} → {"a":1, "b":2}
+❌ Trailing comma: {"a":1,} → {"a":1}
+❌ Unescaped quotes: {"text": "He said "hello""} → {"text": "He said \\"hello\\""}
+❌ Unclosed string: {"text": "unclosed → {"text": "unclosed"}
+❌ Unclosed brace/bracket: {"key": [1, 2 → {"key": [1, 2]}
+❌ Missing quotes around strings: {key: "value"} → {"key": "value"}
+
+EXAMPLE OF CORRECT JSON STRUCTURE:
+{
+  "counterArguments": [
+    {
+      "argument": "This claim is incorrect because studies show that X actually causes Y, not Z.",
+      "reasoning": "Multiple peer-reviewed studies demonstrate this relationship.",
+      "evidence": ["Study A found X causes Y", "Study B confirmed this", "Expert consensus supports this"],
+      "strength": 8
+    }
+  ],
+  "confidence": 0.85,
+  "relatedTopics": ["Topic 1", "Topic 2"]
+}
 
 If you encounter any issues generating a response:
 - If a claim is too vague or unclear, challenge the vagueness itself and provide counter-arguments based on the most reasonable interpretations
 - If a claim is obviously false or misleading, be direct and forceful in explaining why, using the strongest available evidence
 - If a claim is true, acknowledge it honestly but still explore potential limitations, nuances, or alternative perspectives that might change perception
 - If you lack sufficient information, state what additional context would be needed, but still provide your most aggressive, evidence-based analysis with available information
+- ALWAYS ensure your response is valid JSON regardless of the claim's complexity
 
-Now generate your response as valid JSON only:`;
+⚠️ FINAL REMINDER: Generate ONLY valid JSON. No markdown, no code blocks, no explanatory text. Just pure JSON starting with { and ending with }. ⚠️`;
 
   return prompt;
 }
@@ -1296,23 +1401,75 @@ QUALITY REQUIREMENTS:
 - All JSON must be valid and properly formatted (escape quotes, no trailing commas, etc.)
 - Quotes must be exact text from the article
 
-CRITICAL JSON FORMATTING REQUIREMENTS:
-- Output ONLY valid JSON - no text before or after the JSON object
-- All strings must be properly escaped (use \\" for quotes, \\n for newlines)
-- Every opening quote " must have a matching closing quote "
-- No trailing commas after the last item in arrays or objects
-- All braces { } and brackets [ ] must be properly closed and balanced
-- Validate your JSON before responding
+CRITICAL JSON FORMATTING REQUIREMENTS (READ CAREFULLY - THIS IS MANDATORY):
+⚠️ YOUR RESPONSE MUST BE VALID JSON THAT CAN BE PARSED BY JSON.parse() ⚠️
 
-Generate your analysis now as valid JSON only:`;
+1. OUTPUT FORMAT:
+   - Output ONLY valid JSON - NO text before or after the JSON object
+   - NO markdown code blocks (no code fences)
+   - NO explanatory text like "Here is the JSON:" or "Response:"
+   - Start directly with { and end with }
+
+2. STRING ESCAPING (CRITICAL):
+   - Use \\" for quotes inside strings: "summary": "He said \\"hello\\""
+   - Use \\n for newlines: "summary": "Line 1\\nLine 2"
+   - Escape backslashes: "path": "C:\\\\Users\\\\file.txt"
+   - Every opening quote " MUST have a matching closing quote "
+   - If a string contains quotes, you MUST escape them: \\"
+
+3. COMMAS AND STRUCTURE:
+   - NO trailing commas after the last item in arrays or objects
+   - Correct: {"key": "value"}  or  [1, 2, 3]
+   - WRONG: {"key": "value",}  or  [1, 2, 3,]
+   - Every array/object item must be separated by commas (except the last one)
+
+4. BRACES AND BRACKETS:
+   - ALL opening braces { and brackets [ MUST have matching closing braces } and brackets ]
+   - Count your braces: every { needs a }, every [ needs a ]
+   - Ensure proper nesting: { "claims": [{"claim": "text"}] } is correct
+
+5. QUOTES IN STRINGS:
+   - When including quotes from the article, escape them: "quote": "He said \\"hello\\""
+   - Example CORRECT: "quote": "The study found \\"significant results\\""
+   - Example WRONG: "quote": "The study found "significant results"" (unescaped quotes)
+
+6. VALIDATION CHECKLIST:
+   Before responding, verify:
+   ✓ Every " has a matching "
+   ✓ Every { has a matching }
+   ✓ Every [ has a matching ]
+   ✓ No trailing commas
+   ✓ All quotes inside strings are escaped as \\"
+   ✓ Your JSON can be parsed by JSON.parse()
+
+COMMON JSON ERRORS TO AVOID:
+❌ Missing comma between array/object items: {"a":1 "b":2} → {"a":1, "b":2}
+❌ Trailing comma: {"a":1,} → {"a":1}
+❌ Unescaped quotes: {"quote": "He said "hello""} → {"quote": "He said \\"hello\\""}
+❌ Unclosed string: {"quote": "unclosed → {"quote": "unclosed"}
+❌ Unclosed brace/bracket: {"claims": [{"claim": "text"} → {"claims": [{"claim": "text"}]}
+❌ Missing quotes around strings: {summary: "text"} → {"summary": "text"}
+
+⚠️ FINAL REMINDER: Generate ONLY valid JSON. No markdown, no code blocks, no explanatory text. Just pure JSON starting with { and ending with }. ⚠️`;
 
   try {
     const model = getGenAI().getGenerativeModel({
       model: modelName,
       generationConfig: {
         temperature: 0.3, // Lower temperature for analysis
-        responseMimeType: 'application/json',
+        responseMimeType: 'application/json', // Force JSON response - this enforces JSON format
       },
+      systemInstruction:
+        'You are an expert media analyst. Your responses MUST ALWAYS be valid JSON.\n\n' +
+        'CRITICAL JSON REQUIREMENTS:\n' +
+        '- Output ONLY valid JSON that can be parsed by JSON.parse()\n' +
+        '- NO markdown code blocks, NO explanatory text before or after JSON\n' +
+        '- NO trailing commas in arrays or objects\n' +
+        '- ALL strings must be properly quoted and escaped\n' +
+        '- ALL opening braces { and brackets [ must have matching closing braces } and brackets ]\n' +
+        '- EVERY quote character " inside strings must be escaped as \\"\n' +
+        '- Validate your JSON structure before responding\n\n' +
+        'Before responding, verify: Every " has a matching ", every { has a matching }, every [ has a matching ], no trailing commas, all quotes inside strings are escaped.',
     });
 
     const result = await model.generateContent(prompt);
