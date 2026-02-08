@@ -148,28 +148,27 @@ export default function AnalyzePage() {
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             {/* Left Column: Article Text */}
-                            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-800">
-                                <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100 border-b pb-2">
-                                    Source Article
-                                </h2>
+                            <div className="bg-transparent dark:bg-transparent pl-0 pt-0">
+
                                 <div className="mb-4">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                                            {result.title}
-                                        </h3>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight mb-2">
+                                        {result.title}
+                                    </h3>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+                                        {(result.byline || result.author) && (
+                                            <span>By {result.author || result.byline}</span>
+                                        )}
                                         {result.platform && (
-                                            <span className="px-2 py-1 text-xs font-semibold uppercase rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
-                                                {result.platform}
-                                            </span>
+                                            <>
+                                                <span>•</span>
+                                                <span className="uppercase tracking-wider text-xs font-semibold">
+                                                    {result.platform}
+                                                </span>
+                                            </>
                                         )}
                                     </div>
-                                    {(result.byline || result.author) && (
-                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                                            {result.platform ? 'By' : 'By'} {result.author || result.byline}
-                                        </p>
-                                    )}
                                 </div>
-                                <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed">
+                                <div className="prose dark:prose-invert max-w-none max-h-[600px] overflow-y-auto pr-2 custom-scrollbar text-base leading-relaxed text-slate-800 dark:text-slate-300">
                                     <p className="whitespace-pre-wrap">{result.content}</p>
                                 </div>
                             </div>
