@@ -128,6 +128,7 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
 
       return res.status(200).json({
         ...formatClaimResponse(savedClaim),
+        claimSources: cachedData.claimSources || [],
         cached: true,
       });
     }
@@ -164,6 +165,7 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
             counterArguments: result.counterArguments,
             confidence: result.confidence,
             relatedTopics: result.relatedTopics,
+            claimSources: result.claimSources || [],
           }),
           604800 // 7 days in seconds
         );
@@ -234,8 +236,24 @@ router.get('/:id', async (req: Request, res: Response) => {
       });
     }
 
+    // Try to get claimSources from cache if available
+    const cacheKey = generateCacheKey(claim.content);
+    const cachedResult = await getCache(`claim:${cacheKey}`);
+    let claimSources: unknown[] = [];
+    if (cachedResult) {
+      try {
+        const cachedData = JSON.parse(cachedResult);
+        claimSources = cachedData.claimSources || [];
+      } catch {
+        // Ignore cache parse errors
+      }
+    }
+
     // Format response with parsed JSON
-    return res.json(formatClaimResponse(claim));
+    return res.json({
+      ...formatClaimResponse(claim),
+      claimSources,
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Claims] Error fetching claim:', errorMessage);

@@ -3,7 +3,6 @@
  * 
  * Displays the results of fact-checking a claim, including:
  * - Original claim
- * - Confidence score
  * - Steelman counter-arguments with reasoning and evidence
  * - Processing status (pending, processing, completed, failed)
  * 
@@ -13,7 +12,9 @@
 'use client';
 
 import { CounterArgument, Claim } from '@/lib/api/claims';
+import ConfidenceBadge from './ConfidenceBadge';
 import EvidenceList from './EvidenceList';
+import SourcesList from './SourcesList';
 
 interface SteelmanResultProps {
   claim: Claim;
@@ -28,7 +29,7 @@ interface SteelmanResultProps {
  * - Success state with counter-arguments
  */
 export default function SteelmanResult({ claim }: SteelmanResultProps) {
-  const { content, steelmanArguments, confidenceScore, processingStatus } =
+  const { content, steelmanArguments, processingStatus } =
     claim;
 
   // Show loading state while processing
@@ -82,9 +83,18 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
           Original Claim
         </h3>
         <p className="text-gray-900 dark:text-gray-100">{content}</p>
+        {/* Sources supporting the claim */}
+        {claim.claimSources && claim.claimSources.length > 0 && (
+          <SourcesList sources={claim.claimSources} title="Sources Supporting This Claim" />
+        )}
       </div>
 
-
+      {/* Confidence Score Badge */}
+      {claim.confidenceScore !== undefined && (
+        <div className="flex items-center justify-center">
+          <ConfidenceBadge score={claim.confidenceScore} />
+        </div>
+      )}
 
       {/* Counter Arguments Section */}
       <div className="space-y-4">
@@ -108,6 +118,11 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
                 Counter-Argument {index + 1}
               </h3>
               {/* Strength Badge */}
+              {arg.strength && (
+                <span className="px-3 py-1 text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full">
+                  Strength: {arg.strength}/10
+                </span>
+              )}
             </div>
 
             {/* Counter-argument Content */}
@@ -137,6 +152,11 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
               {/* Evidence List (if provided) */}
               {arg.evidence && arg.evidence.length > 0 && (
                 <EvidenceList evidence={arg.evidence} />
+              )}
+
+              {/* Sources List (if provided) */}
+              {arg.sources && arg.sources.length > 0 && (
+                <SourcesList sources={arg.sources} title="Sources Supporting This Counter-Argument" />
               )}
             </div>
           </div>

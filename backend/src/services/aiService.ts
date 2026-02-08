@@ -8,6 +8,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createHash } from 'crypto';
+import { searchClaimSources, searchCounterArgumentSources } from '../utils/searchSources';
 
 // Initialize Google Generative AI client lazily
 let genAIInstance: GoogleGenerativeAI | null = null;
@@ -42,6 +43,11 @@ export interface CounterArgument {
   reasoning: string; // Why this counter-argument is strong
   evidence?: string[]; // Supporting evidence points
   strength: number; // Strength score 1-10 (10 = strongest)
+  sources?: Array<{ // Online sources supporting this counter-argument
+    title: string;
+    url: string;
+    snippet?: string;
+  }>;
 }
 
 /**
@@ -51,6 +57,11 @@ export interface SteelmanResponse {
   counterArguments: CounterArgument[]; // Array of 1-3 counter-arguments
   confidence: number; // Confidence score 0-1 (1 = very confident)
   relatedTopics?: string[]; // Related topics for further research
+  claimSources?: Array<{ // Online sources supporting the original claim
+    title: string;
+    url: string;
+    snippet?: string;
+  }>;
   processingTime: number; // Time taken in milliseconds
 }
 
@@ -638,6 +649,42 @@ export async function generateSteelmanArgument(
       strength: Math.max(1, Math.min(10, arg.strength || 5)),
     }));
 
+    // Search for sources to support the claim and counter-arguments
+    try {
+      // Search for sources supporting the original claim
+      const claimSources = await searchClaimSources(request.claim);
+      if (claimSources.length > 0) {
+        response.claimSources = claimSources.map(source => ({
+          title: source.title,
+          url: source.url,
+          snippet: source.snippet,
+        }));
+      }
+
+      // Search for sources supporting each counter-argument
+      const counterArgumentSourcesPromises = response.counterArguments.map(async (arg) => {
+        const sources = await searchCounterArgumentSources(arg.argument, request.claim);
+        return sources.map(source => ({
+          title: source.title,
+          url: source.url,
+          snippet: source.snippet,
+        }));
+      });
+
+      const counterArgumentSources = await Promise.all(counterArgumentSourcesPromises);
+      
+      // Add sources to each counter-argument
+      response.counterArguments = response.counterArguments.map((arg, index) => ({
+        ...arg,
+        sources: counterArgumentSources[index] || [],
+      }));
+    } catch (searchError) {
+      // Log search errors but don't fail the request
+      const errorMessage = searchError instanceof Error ? searchError.message : 'Unknown error';
+      console.warn('[AI Service] Error searching for sources:', errorMessage);
+      // Continue without sources - the response is still valid
+    }
+
     return response;
   } catch (error: unknown) {
     // Log errors for debugging (always log errors)
@@ -721,6 +768,8 @@ You must respond with ONLY a valid JSON object (no markdown, no code blocks, no 
   "confidence": 0.85,
   "relatedTopics": ["topic1", "topic2"]
 }
+
+Note: Sources will be added automatically after your response, so you don't need to include them in the JSON.
 
 CRITICAL JSON FORMATTING RULES:
 - Respond with ONLY valid JSON, no other text before or after
