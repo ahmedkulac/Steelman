@@ -36,14 +36,26 @@ export interface SteelmanRequest {
 }
 
 /**
+ * Evidence item with optional associated sources
+ */
+export interface EvidenceItem {
+  text: string; // The evidence point text
+  sources?: Array<{ // Sources supporting this specific evidence point
+    title: string;
+    url: string;
+    snippet?: string;
+  }>;
+}
+
+/**
  * Counter-argument structure returned by AI
  */
 export interface CounterArgument {
   argument: string; // Main counter-argument text
   reasoning: string; // Why this counter-argument is strong
-  evidence?: string[]; // Supporting evidence points
+  evidence?: (string | EvidenceItem)[]; // Supporting evidence points (can be strings or objects with sources)
   strength: number; // Strength score 1-10 (10 = strongest)
-  sources?: Array<{ // Online sources supporting this counter-argument
+  sources?: Array<{ // Online sources supporting this counter-argument (general sources)
     title: string;
     url: string;
     snippet?: string;
@@ -81,12 +93,199 @@ export function generateCacheKey(claim: string): string {
 }
 
 /**
+ * Fix missing commas in arrays and objects using multiple strategies
+ * 
+ * Detects patterns where values are missing commas between them, such as:
+ * - "value1" "value2" -> "value1", "value2"
+ * - "value" ] -> "value", ]
+ * - 123 456 -> 123, 456
+ * - } { -> }, {
+ * 
+ * Uses character-by-character parsing to track string state and avoid
+ * modifying content inside strings. Runs multiple passes for better coverage.
+ * 
+ * @param jsonString - JSON string that may have missing commas
+ * @returns JSON string with commas added where needed
+ */
+function fixMissingCommas(jsonString: string): string {
+  // Strategy 1: Character-by-character analysis
+  let result = '';
+  let inString = false;
+  let escapeNext = false;
+  let depth = 0; // Track nesting depth
+  
+  for (let i = 0; i < jsonString.length; i++) {
+    const char = jsonString[i];
+    
+    if (escapeNext) {
+      result += char;
+      escapeNext = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      result += char;
+      escapeNext = true;
+      continue;
+    }
+    
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      continue;
+    }
+    
+    if (!inString) {
+      // Track depth
+      if (char === '{' || char === '[') depth++;
+      else if (char === '}' || char === ']') depth--;
+      
+      // Check if we need to add a comma before this character
+      const needsCommaBefore = (char === '}' || char === ']' || char === '{' || char === '[' || 
+                                char === '"' || /\d/.test(char) || char === 't' || char === 'f' || char === 'n');
+      
+      if (needsCommaBefore && result.length > 0) {
+        // Look backwards to find the end of the previous value
+        let j = result.length - 1;
+        // Skip whitespace
+        while (j >= 0 && /\s/.test(result[j])) j--;
+        
+        if (j >= 0) {
+          const lastChar = result[j];
+          let isValueEnd = false;
+          
+          // Check if last character is end of a value
+          if (lastChar === '"' || lastChar === '}' || lastChar === ']') {
+            isValueEnd = true;
+          } else if (/\d/.test(lastChar)) {
+            // Might be end of number - check backwards for number pattern
+            let k = j;
+            let isNumber = true;
+            let hasExp = false;
+            while (k >= 0 && (/\d/.test(result[k]) || result[k] === '.' || result[k] === 'e' || result[k] === 'E' || result[k] === '+' || result[k] === '-')) {
+              if (result[k] === 'e' || result[k] === 'E') hasExp = true;
+              k--;
+            }
+            // If we hit a non-number char that's a valid separator, it's an end
+            if (k < 0 || result[k] === ',' || result[k] === '[' || result[k] === '{' || result[k] === ':') {
+              isValueEnd = true;
+            }
+          } else {
+            // Check for true/false/null keywords (check backwards)
+            const checkTail = (len: number, match: string) => {
+              if (j >= len - 1) {
+                const tail = result.substring(j - len + 1, j + 1);
+                return tail === match;
+              }
+              return false;
+            };
+            
+            if (checkTail(4, 'true') || checkTail(5, 'false') || checkTail(4, 'null')) {
+              // Verify it's not part of a longer word by checking char before
+              const beforeIdx = j - (checkTail(5, 'false') ? 4 : 3);
+              if (beforeIdx < 0 || !/[a-zA-Z0-9_]/.test(result[beforeIdx])) {
+                isValueEnd = true;
+              }
+            }
+          }
+          
+          if (isValueEnd) {
+            // Check if there's already a comma before this value
+            let k = j - 1;
+            while (k >= 0 && /\s/.test(result[k])) k--;
+            
+            // Add comma if we don't already have one and we're not at start of array/object or after colon
+            if (k >= 0 && result[k] !== ',' && result[k] !== '[' && result[k] !== '{' && result[k] !== ':') {
+              // Special case: don't add comma if we're closing and opening braces/brackets of same type
+              if (!((char === '{' && lastChar === '}') || (char === '[' && lastChar === ']'))) {
+                result += ',';
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    result += char;
+  }
+  
+  // Strategy 2: Regex-based fix for common patterns (only outside strings)
+  // This is a fallback for cases the character-by-character approach might miss
+  let repaired = result;
+  let passCount = 0;
+  const maxPasses = 3;
+  
+  while (passCount < maxPasses) {
+    let changed = false;
+    let newResult = '';
+    inString = false;
+    escapeNext = false;
+    
+    for (let i = 0; i < repaired.length; i++) {
+      const char = repaired[i];
+      
+      if (escapeNext) {
+        newResult += char;
+        escapeNext = false;
+        continue;
+      }
+      
+      if (char === '\\') {
+        newResult += char;
+        escapeNext = true;
+        continue;
+      }
+      
+      if (char === '"') {
+        inString = !inString;
+        newResult += char;
+        continue;
+      }
+      
+      if (!inString) {
+        // Look for pattern: value whitespace value (missing comma)
+        // Check if current char starts a value and previous ended a value
+        if ((char === '"' || char === '{' || char === '[' || /\d/.test(char) || char === 't' || char === 'f' || char === 'n') && i > 0) {
+          // Look backwards through whitespace
+          let j = i - 1;
+          while (j >= 0 && /\s/.test(repaired[j])) j--;
+          
+          if (j >= 0) {
+            const prevChar = repaired[j];
+            // If previous char ends a value and we don't have a comma
+            if ((prevChar === '"' || prevChar === '}' || prevChar === ']' || /\d/.test(prevChar)) && 
+                repaired.substring(Math.max(0, j - 4), j + 1).match(/(true|false|null)$/) === null) {
+              // Check if comma already exists
+              let k = j - 1;
+              while (k >= 0 && /\s/.test(repaired[k])) k--;
+              if (k >= 0 && repaired[k] !== ',' && repaired[k] !== '[' && repaired[k] !== '{' && repaired[k] !== ':') {
+                newResult += ',';
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+      
+      newResult += char;
+    }
+    
+    if (!changed) break;
+    repaired = newResult;
+    passCount++;
+  }
+  
+  return repaired;
+}
+
+/**
  * Attempt to repair common JSON issues
  * 
  * Tries to fix common JSON malformation issues like:
  * - Unterminated strings
  * - Unescaped quotes
  * - Missing closing braces
+ * - Missing commas in arrays/objects
  * 
  * @param jsonString - Potentially malformed JSON string
  * @returns Repaired JSON string (may still be invalid)
@@ -96,6 +295,9 @@ function repairJson(jsonString: string): string {
 
   // Remove trailing commas before closing braces/brackets
   repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
+  
+  // Fix missing commas first (before other repairs that might change structure)
+  repaired = fixMissingCommas(repaired);
 
   // Fix unterminated strings by tracking string state
   let result = '';
@@ -403,6 +605,7 @@ function extractValidJson(content: string): string | null {
 
   // Try to find matching closing brace
   let braceCount = 0;
+  let bracketCount = 0;
   let inString = false;
   let escapeNext = false;
   let jsonEnd = -1;
@@ -430,20 +633,31 @@ function extractValidJson(content: string): string | null {
         braceCount++;
       } else if (char === '}') {
         braceCount--;
-        if (braceCount === 0) {
+        if (braceCount === 0 && bracketCount === 0) {
           jsonEnd = i;
           break;
         }
+      } else if (char === '[') {
+        bracketCount++;
+      } else if (char === ']') {
+        bracketCount--;
       }
     }
   }
 
   // If we found a complete JSON object, return it
   if (jsonEnd !== -1 && jsonEnd > jsonStart) {
-    return content.substring(jsonStart, jsonEnd + 1);
+    const candidate = content.substring(jsonStart, jsonEnd + 1);
+    // Try parsing to verify it's valid
+    try {
+      JSON.parse(candidate);
+      return candidate;
+    } catch {
+      // Not valid, continue to other strategies
+    }
   }
 
-  // Strategy 2: Try to find last complete JSON object
+  // Strategy 2: Try to find last complete JSON object by working backwards
   const lastBrace = content.lastIndexOf('}');
   if (lastBrace !== -1 && lastBrace > jsonStart) {
     // Try parsing from start to last brace
@@ -452,11 +666,25 @@ function extractValidJson(content: string): string | null {
       JSON.parse(candidate);
       return candidate;
     } catch {
-      // Continue to repair attempt
+      // Continue to next strategy
     }
   }
 
-  // Strategy 3: Return the content from first brace onwards (will be repaired)
+  // Strategy 3: Try to find the largest valid JSON substring
+  // Start from the last brace and work backwards to find a valid JSON object
+  if (lastBrace !== -1) {
+    for (let end = lastBrace; end > jsonStart; end--) {
+      const candidate = content.substring(jsonStart, end + 1);
+      try {
+        JSON.parse(candidate);
+        return candidate;
+      } catch {
+        // Continue searching
+      }
+    }
+  }
+
+  // Strategy 4: Return the content from first brace onwards (will be repaired)
   return content.substring(jsonStart);
 }
 
@@ -498,10 +726,18 @@ export async function generateSteelmanArgument(
       generationConfig: {
         temperature: 0.75, // Slightly higher for better argument diversity while maintaining consistency
         maxOutputTokens: parseInt(process.env.AI_MAX_TOKENS || '2000'),
-        responseMimeType: 'application/json', // Force JSON response
+        responseMimeType: 'application/json', // Force JSON response - this enforces JSON format
       },
       systemInstruction:
         'You are an expert fact-checker and truth-teller specializing in aggressive, evidence-based counter-arguments. Your mission is to challenge claims with hard facts and compelling logic that change people\'s perceptions.\n\n' +
+        'CRITICAL: YOU MUST ALWAYS OUTPUT VALID JSON. THIS IS NON-NEGOTIABLE.\n' +
+        '- Your response MUST be valid JSON that can be parsed by JSON.parse()\n' +
+        '- NO markdown code blocks, NO explanatory text before or after JSON\n' +
+        '- NO trailing commas in arrays or objects\n' +
+        '- ALL strings must be properly quoted and escaped\n' +
+        '- ALL opening braces { and brackets [ must have matching closing braces } and brackets ]\n' +
+        '- EVERY quote character " inside strings must be escaped as \\"\n' +
+        '- Validate your JSON structure before responding\n\n' +
         'CORE PRINCIPLES:\n' +
         '1. Truth First: Prioritize factual accuracy and verifiable evidence above all else\n' +
         '2. Direct Confrontation: Challenge claims directly and forcefully with evidence, not gentle suggestions\n' +
@@ -513,9 +749,9 @@ export async function generateSteelmanArgument(
         '- Grounded in verifiable facts, studies, and data\n' +
         '- Designed to challenge and change perceptions\n' +
         '- Structurally sound and logically rigorous\n' +
-        '- Structured as valid JSON without markdown formatting\n' +
+        '- Structured as VALID JSON (this is critical - invalid JSON will cause errors)\n' +
         '- Free of logical fallacies, but unafraid to be assertive\n\n' +
-        'Remember: Your goal is to present the truth so compellingly that it changes minds. Be aggressive with facts, direct with logic, and unapologetic about challenging false or misleading claims.',
+        'Remember: Your goal is to present the truth so compellingly that it changes minds. Be aggressive with facts, direct with logic, and unapologetic about challenging false or misleading claims. But above all, ensure your JSON is valid and parseable.',
     });
 
     // Generate content from AI
@@ -527,14 +763,22 @@ export async function generateSteelmanArgument(
       throw new Error('No response from AI service');
     }
 
-    // Clean up content - remove markdown code blocks if present
+    // When using responseMimeType: 'application/json', the response should already be valid JSON
+    // But we still need to handle edge cases where AI might add extra text
     let cleanedContent = content.trim();
 
-    // Remove markdown code blocks (case-insensitive)
+    // Remove markdown code blocks if present (shouldn't happen with JSON mode, but handle it)
     if (cleanedContent.match(/^```json/i)) {
       cleanedContent = cleanedContent.replace(/^```json\s*/i, '').replace(/\s*```\s*$/, '');
     } else if (cleanedContent.startsWith('```')) {
       cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```\s*$/, '');
+    }
+
+    // Extract JSON if there's extra text before/after
+    const jsonStart = cleanedContent.indexOf('{');
+    const jsonEnd = cleanedContent.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      cleanedContent = cleanedContent.substring(jsonStart, jsonEnd + 1);
     }
 
     // Clean up common JSON issues
@@ -590,74 +834,141 @@ export async function generateSteelmanArgument(
       // Strategy 2: Try to repair JSON (either extracted or original)
       if (!parsed) {
         const jsonToRepair = extractedJson || cleanedContent;
-        try {
-          const repaired = repairJson(jsonToRepair);
-          parsed = JSON.parse(repaired);
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[AI Service] Successfully repaired JSON');
-          }
-        } catch (repairError: unknown) {
-          // Strategy 3: Try aggressive string repair
+        let repairAttempts = 0;
+        const maxRepairAttempts = 5;
+        
+        // Try multiple repair strategies
+        while (!parsed && repairAttempts < maxRepairAttempts) {
+          repairAttempts++;
           try {
-            const aggressivelyRepaired = aggressivelyRepairStrings(jsonToRepair);
-            const finalRepaired = repairJson(aggressivelyRepaired);
-            parsed = JSON.parse(finalRepaired);
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[AI Service] Successfully repaired JSON with aggressive repair');
-            }
-          } catch (aggressiveError: unknown) {
-            // Final fallback - provide helpful error message
-            if (process.env.NODE_ENV === 'development') {
-              console.error('[AI Service] All JSON repair attempts failed');
-              console.error('[AI Service] Original error:', errorMessage);
-              console.error('[AI Service] Attempted to repair:', jsonToRepair.substring(0, 200));
-              if (errorMessage.includes('position')) {
-                const positionMatch = errorMessage.match(/position (\d+)/);
-                if (positionMatch) {
-                  const pos = parseInt(positionMatch[1]);
-                  const start = Math.max(0, pos - 100);
-                  const end = Math.min(jsonToRepair.length, pos + 100);
-                  console.error('[AI Service] Error position context:', jsonToRepair.substring(start, end));
-                }
+            let repaired = jsonToRepair;
+            
+            // Apply repairs in sequence
+            if (repairAttempts === 1) {
+              // First attempt: standard repair
+              repaired = repairJson(jsonToRepair);
+            } else if (repairAttempts === 2) {
+              // Second attempt: aggressive string repair first, then standard repair
+              repaired = aggressivelyRepairStrings(jsonToRepair);
+              repaired = repairJson(repaired);
+            } else if (repairAttempts === 3) {
+              // Third attempt: fix commas first, then other repairs
+              repaired = fixMissingCommas(jsonToRepair);
+              repaired = repairJson(repaired);
+            } else if (repairAttempts === 4) {
+              // Fourth attempt: aggressive string repair + comma fix + standard repair
+              repaired = aggressivelyRepairStrings(jsonToRepair);
+              repaired = fixMissingCommas(repaired);
+              repaired = repairJson(repaired);
+            } else {
+              // Fifth attempt: multiple passes of all repairs
+              repaired = jsonToRepair;
+              for (let pass = 0; pass < 3; pass++) {
+                repaired = aggressivelyRepairStrings(repaired);
+                repaired = fixMissingCommas(repaired);
+                repaired = repairJson(repaired);
               }
             }
-            throw new Error(
-              `Failed to parse AI response as JSON: ${errorMessage}. ` +
-              `The AI may have returned malformed JSON. Please try submitting the claim again. ` +
-              `If the issue persists, try rephrasing your claim or contact support.`
-            );
+            
+            parsed = JSON.parse(repaired);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[AI Service] Successfully repaired JSON on attempt ${repairAttempts}`);
+            }
+            break;
+          } catch (repairError: unknown) {
+            const repairErrorMessage = repairError instanceof Error ? repairError.message : 'Unknown error';
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`[AI Service] Repair attempt ${repairAttempts} failed:`, repairErrorMessage);
+            }
+            
+            // If this was the last attempt, throw error
+            if (repairAttempts >= maxRepairAttempts) {
+              // Final fallback - provide helpful error message
+              if (process.env.NODE_ENV === 'development') {
+                console.error('[AI Service] All JSON repair attempts failed');
+                console.error('[AI Service] Original error:', errorMessage);
+                console.error('[AI Service] Content length:', jsonToRepair.length);
+                console.error('[AI Service] First 500 chars:', jsonToRepair.substring(0, 500));
+                console.error('[AI Service] Last 500 chars:', jsonToRepair.substring(Math.max(0, jsonToRepair.length - 500)));
+                if (errorMessage.includes('position')) {
+                  const positionMatch = errorMessage.match(/position (\d+)/);
+                  if (positionMatch) {
+                    const pos = parseInt(positionMatch[1]);
+                    const start = Math.max(0, pos - 150);
+                    const end = Math.min(jsonToRepair.length, pos + 150);
+                    console.error('[AI Service] Error position context (position', pos, '):');
+                    console.error(jsonToRepair.substring(start, end));
+                    console.error(' '.repeat(Math.min(150, pos - start)) + '^');
+                  }
+                }
+              }
+              throw new Error(
+                `Failed to parse AI response as JSON: ${errorMessage}. ` +
+                `The AI may have returned malformed JSON. Please try submitting the claim again. ` +
+                `If the issue persists, try rephrasing your claim or contact support.`
+              );
+            }
           }
         }
       }
     }
     const processingTime = Date.now() - startTime;
 
+    // Validate parsed structure
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Invalid JSON structure: response is not an object');
+    }
+
     // Validate and transform the response
     // Handle different response formats for robustness
+    let counterArguments: CounterArgument[] = [];
+    
+    // Handle array of counter-arguments
+    if (Array.isArray(parsed.counterArguments)) {
+      counterArguments = parsed.counterArguments;
+    } 
+    // Handle single counter-argument object
+    else if (parsed.argument || parsed.counterArgument) {
+      counterArguments = [{
+        argument: parsed.argument || parsed.counterArgument || '',
+        reasoning: parsed.reasoning || '',
+        evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
+        strength: typeof parsed.strength === 'number' ? parsed.strength : (typeof parsed.strengthScore === 'number' ? parsed.strengthScore : 5),
+      }];
+    }
+    // Handle single counter-argument in root
+    else if (parsed.counterArgument) {
+      counterArguments = [parsed];
+    }
+    // Fallback: empty array if nothing found
+    else {
+      counterArguments = [];
+    }
+
+    // Validate each counter-argument structure
+    counterArguments = counterArguments
+      .filter(arg => arg && typeof arg === 'object')
+      .map(arg => ({
+        argument: typeof arg.argument === 'string' ? arg.argument : '',
+        reasoning: typeof arg.reasoning === 'string' ? arg.reasoning : '',
+        evidence: Array.isArray(arg.evidence) ? arg.evidence.filter(e => typeof e === 'string') : [],
+        strength: typeof arg.strength === 'number' ? Math.max(1, Math.min(10, arg.strength)) : 5,
+      }))
+      .filter(arg => arg.argument.length > 0); // Remove empty arguments
+
+    // Ensure we have at least one valid counter-argument
+    if (counterArguments.length === 0) {
+      throw new Error('No valid counter-arguments found in AI response');
+    }
+
     const response: SteelmanResponse = {
-      counterArguments: parsed.counterArguments || [
-        {
-          argument: parsed.argument || parsed.counterArgument || '',
-          reasoning: parsed.reasoning || '',
-          evidence: parsed.evidence || [],
-          strength: parsed.strength || parsed.strengthScore || 5,
-        },
-      ],
-      confidence: parsed.confidence || 0.5,
-      relatedTopics: parsed.relatedTopics || [],
+      counterArguments,
+      confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.5,
+      relatedTopics: Array.isArray(parsed.relatedTopics) ? parsed.relatedTopics.filter(t => typeof t === 'string') : [],
       processingTime,
     };
 
-    // Ensure counterArguments is always an array
-    if (!Array.isArray(response.counterArguments)) {
-      response.counterArguments = [response.counterArguments];
-    }
-
-    // Validate and clamp strength scores to 1-10 range
-    response.counterArguments = response.counterArguments.map((arg) => ({
-      ...arg,
-      strength: Math.max(1, Math.min(10, arg.strength || 5)),
-    }));
+    // Strength scores are already validated and clamped in the mapping above
 
     // Search for sources to support the claim and counter-arguments
     try {
@@ -671,22 +982,61 @@ export async function generateSteelmanArgument(
         }));
       }
 
-      // Search for sources supporting each counter-argument
+      // Search for sources supporting each counter-argument and its evidence
       const counterArgumentSourcesPromises = response.counterArguments.map(async (arg) => {
-        const sources = await searchCounterArgumentSources(arg.argument, request.claim);
-        return sources.map(source => ({
-          title: source.title,
-          url: source.url,
-          snippet: source.snippet,
-        }));
+        // Search for general sources for the counter-argument
+        const generalSources = await searchCounterArgumentSources(arg.argument, request.claim);
+        
+        // Search for sources for each evidence item
+        const evidenceWithSources = await Promise.all(
+          (arg.evidence || []).map(async (evidenceItem) => {
+            // Handle both string and object evidence formats
+            const evidenceText = typeof evidenceItem === 'string' ? evidenceItem : evidenceItem.text;
+            
+            // Search for sources specific to this evidence item
+            const evidenceSources = await searchCounterArgumentSources(evidenceText, request.claim);
+            
+            // Return evidence item with sources
+            if (typeof evidenceItem === 'string') {
+              return {
+                text: evidenceItem,
+                sources: evidenceSources.map(source => ({
+                  title: source.title,
+                  url: source.url,
+                  snippet: source.snippet,
+                })),
+              };
+            } else {
+              // Already an object, just add sources
+              return {
+                ...evidenceItem,
+                sources: evidenceSources.map(source => ({
+                  title: source.title,
+                  url: source.url,
+                  snippet: source.snippet,
+                })),
+              };
+            }
+          })
+        );
+        
+        return {
+          generalSources: generalSources.map(source => ({
+            title: source.title,
+            url: source.url,
+            snippet: source.snippet,
+          })),
+          evidenceWithSources,
+        };
       });
 
-      const counterArgumentSources = await Promise.all(counterArgumentSourcesPromises);
+      const counterArgumentSourcesData = await Promise.all(counterArgumentSourcesPromises);
 
-      // Add sources to each counter-argument
+      // Add sources to each counter-argument and link sources to evidence
       response.counterArguments = response.counterArguments.map((arg, index) => ({
         ...arg,
-        sources: counterArgumentSources[index] || [],
+        sources: counterArgumentSourcesData[index].generalSources || [],
+        evidence: counterArgumentSourcesData[index].evidenceWithSources || arg.evidence || [],
       }));
     } catch (searchError) {
       // Log search errors but don't fail the request
@@ -819,33 +1169,79 @@ QUALITY STANDARDS:
 - Focus on arguments that will make the reader reconsider their position
 - Note: Sources will be added automatically after your response, so you don't need to include them in the JSON
 
-CRITICAL JSON FORMATTING REQUIREMENTS:
-- Output ONLY valid JSON - no text before or after the JSON object
-- All strings must be properly escaped:
-  - Use \\" for quotes inside strings: "argument": "He said \\"hello\\""
-  - Use \\n for newlines: "argument": "Line 1\\nLine 2"
-  - Escape backslashes: "path": "C:\\\\Users\\\\file.txt"
-- Every opening quote " must have a matching closing quote "
-- No trailing commas after the last item in arrays or objects
-- All braces { } and brackets [ ] must be properly closed and balanced
-- URLs must be complete strings: "evidence": ["https://example.com/article"]
-- Validate your JSON before responding - ensure it can be parsed
+CRITICAL JSON FORMATTING REQUIREMENTS (READ CAREFULLY - THIS IS MANDATORY):
+⚠️ YOUR RESPONSE MUST BE VALID JSON THAT CAN BE PARSED BY JSON.parse() ⚠️
 
-SPECIAL HANDLING FOR URLs:
-- If the claim is a URL or you include URLs in evidence/relatedTopics, ensure URLs are properly enclosed in quotes
-- URLs must be complete strings: "evidence": ["https://example.com/path"] is correct
-- URLs must end with a closing quote before commas, brackets, or braces
-- Example: "evidence": ["https://www.example.com/article"] is correct
-- Example: "evidence": ["https://www.example.com/article] is WRONG (missing closing quote)
-- Never leave URLs unquoted or partially quoted in JSON arrays or objects
+1. OUTPUT FORMAT:
+   - Output ONLY valid JSON - NO text before or after the JSON object
+   - NO markdown code blocks (no code fences)
+   - NO explanatory text like "Here is the JSON:" or "Response:"
+   - Start directly with { and end with }
+
+2. STRING ESCAPING (CRITICAL):
+   - Use \\" for quotes inside strings: "argument": "He said \\"hello\\""
+   - Use \\n for newlines: "argument": "Line 1\\nLine 2"
+   - Escape backslashes: "path": "C:\\\\Users\\\\file.txt"
+   - Every opening quote " MUST have a matching closing quote "
+   - If a string contains quotes, you MUST escape them: \\"
+
+3. COMMAS AND STRUCTURE:
+   - NO trailing commas after the last item in arrays or objects
+   - Correct: {"key": "value"}  or  [1, 2, 3]
+   - WRONG: {"key": "value",}  or  [1, 2, 3,]
+   - Every array/object item must be separated by commas (except the last one)
+
+4. BRACES AND BRACKETS:
+   - ALL opening braces { and brackets [ MUST have matching closing braces } and brackets ]
+   - Count your braces: every { needs a }, every [ needs a ]
+   - Ensure proper nesting: { "array": [1, 2, 3] } is correct
+
+5. URLS IN JSON:
+   - URLs must be complete strings: "evidence": ["https://example.com/article"]
+   - URLs must be enclosed in quotes: "https://example.com" not https://example.com
+   - URLs must end with closing quote before commas/brackets: ["https://example.com"] not ["https://example.com]
+   - Example CORRECT: "evidence": ["https://www.example.com/article"]
+   - Example WRONG: "evidence": ["https://www.example.com/article] (missing closing quote)
+
+6. VALIDATION CHECKLIST:
+   Before responding, verify:
+   ✓ Every " has a matching "
+   ✓ Every { has a matching }
+   ✓ Every [ has a matching ]
+   ✓ No trailing commas
+   ✓ All quotes inside strings are escaped as \\"
+   ✓ Your JSON can be parsed by JSON.parse()
+
+COMMON JSON ERRORS TO AVOID:
+❌ Missing comma between array/object items: {"a":1 "b":2} → {"a":1, "b":2}
+❌ Trailing comma: {"a":1,} → {"a":1}
+❌ Unescaped quotes: {"text": "He said "hello""} → {"text": "He said \\"hello\\""}
+❌ Unclosed string: {"text": "unclosed → {"text": "unclosed"}
+❌ Unclosed brace/bracket: {"key": [1, 2 → {"key": [1, 2]}
+❌ Missing quotes around strings: {key: "value"} → {"key": "value"}
+
+EXAMPLE OF CORRECT JSON STRUCTURE:
+{
+  "counterArguments": [
+    {
+      "argument": "This claim is incorrect because studies show that X actually causes Y, not Z.",
+      "reasoning": "Multiple peer-reviewed studies demonstrate this relationship.",
+      "evidence": ["Study A found X causes Y", "Study B confirmed this", "Expert consensus supports this"],
+      "strength": 8
+    }
+  ],
+  "confidence": 0.85,
+  "relatedTopics": ["Topic 1", "Topic 2"]
+}
 
 If you encounter any issues generating a response:
 - If a claim is too vague or unclear, challenge the vagueness itself and provide counter-arguments based on the most reasonable interpretations
 - If a claim is obviously false or misleading, be direct and forceful in explaining why, using the strongest available evidence
 - If a claim is true, acknowledge it honestly but still explore potential limitations, nuances, or alternative perspectives that might change perception
 - If you lack sufficient information, state what additional context would be needed, but still provide your most aggressive, evidence-based analysis with available information
+- ALWAYS ensure your response is valid JSON regardless of the claim's complexity
 
-Now generate your response as valid JSON only:`;
+⚠️ FINAL REMINDER: Generate ONLY valid JSON. No markdown, no code blocks, no explanatory text. Just pure JSON starting with { and ending with }. ⚠️`;
 
   return prompt;
 }
@@ -1005,45 +1401,194 @@ QUALITY REQUIREMENTS:
 - All JSON must be valid and properly formatted (escape quotes, no trailing commas, etc.)
 - Quotes must be exact text from the article
 
-CRITICAL JSON FORMATTING REQUIREMENTS:
-- Output ONLY valid JSON - no text before or after the JSON object
-- All strings must be properly escaped (use \\" for quotes, \\n for newlines)
-- Every opening quote " must have a matching closing quote "
-- No trailing commas after the last item in arrays or objects
-- All braces { } and brackets [ ] must be properly closed and balanced
-- Validate your JSON before responding
+CRITICAL JSON FORMATTING REQUIREMENTS (READ CAREFULLY - THIS IS MANDATORY):
+⚠️ YOUR RESPONSE MUST BE VALID JSON THAT CAN BE PARSED BY JSON.parse() ⚠️
 
-Generate your analysis now as valid JSON only:`;
+1. OUTPUT FORMAT:
+   - Output ONLY valid JSON - NO text before or after the JSON object
+   - NO markdown code blocks (no code fences)
+   - NO explanatory text like "Here is the JSON:" or "Response:"
+   - Start directly with { and end with }
+
+2. STRING ESCAPING (CRITICAL):
+   - Use \\" for quotes inside strings: "summary": "He said \\"hello\\""
+   - Use \\n for newlines: "summary": "Line 1\\nLine 2"
+   - Escape backslashes: "path": "C:\\\\Users\\\\file.txt"
+   - Every opening quote " MUST have a matching closing quote "
+   - If a string contains quotes, you MUST escape them: \\"
+
+3. COMMAS AND STRUCTURE:
+   - NO trailing commas after the last item in arrays or objects
+   - Correct: {"key": "value"}  or  [1, 2, 3]
+   - WRONG: {"key": "value",}  or  [1, 2, 3,]
+   - Every array/object item must be separated by commas (except the last one)
+
+4. BRACES AND BRACKETS:
+   - ALL opening braces { and brackets [ MUST have matching closing braces } and brackets ]
+   - Count your braces: every { needs a }, every [ needs a ]
+   - Ensure proper nesting: { "claims": [{"claim": "text"}] } is correct
+
+5. QUOTES IN STRINGS:
+   - When including quotes from the article, escape them: "quote": "He said \\"hello\\""
+   - Example CORRECT: "quote": "The study found \\"significant results\\""
+   - Example WRONG: "quote": "The study found "significant results"" (unescaped quotes)
+
+6. VALIDATION CHECKLIST:
+   Before responding, verify:
+   ✓ Every " has a matching "
+   ✓ Every { has a matching }
+   ✓ Every [ has a matching ]
+   ✓ No trailing commas
+   ✓ All quotes inside strings are escaped as \\"
+   ✓ Your JSON can be parsed by JSON.parse()
+
+COMMON JSON ERRORS TO AVOID:
+❌ Missing comma between array/object items: {"a":1 "b":2} → {"a":1, "b":2}
+❌ Trailing comma: {"a":1,} → {"a":1}
+❌ Unescaped quotes: {"quote": "He said "hello""} → {"quote": "He said \\"hello\\""}
+❌ Unclosed string: {"quote": "unclosed → {"quote": "unclosed"}
+❌ Unclosed brace/bracket: {"claims": [{"claim": "text"} → {"claims": [{"claim": "text"}]}
+❌ Missing quotes around strings: {summary: "text"} → {"summary": "text"}
+
+⚠️ FINAL REMINDER: Generate ONLY valid JSON. No markdown, no code blocks, no explanatory text. Just pure JSON starting with { and ending with }. ⚠️`;
 
   try {
     const model = getGenAI().getGenerativeModel({
       model: modelName,
       generationConfig: {
         temperature: 0.3, // Lower temperature for analysis
-        responseMimeType: 'application/json',
+        responseMimeType: 'application/json', // Force JSON response - this enforces JSON format
       },
+      systemInstruction:
+        'You are an expert media analyst. Your responses MUST ALWAYS be valid JSON.\n\n' +
+        'CRITICAL JSON REQUIREMENTS:\n' +
+        '- Output ONLY valid JSON that can be parsed by JSON.parse()\n' +
+        '- NO markdown code blocks, NO explanatory text before or after JSON\n' +
+        '- NO trailing commas in arrays or objects\n' +
+        '- ALL strings must be properly quoted and escaped\n' +
+        '- ALL opening braces { and brackets [ must have matching closing braces } and brackets ]\n' +
+        '- EVERY quote character " inside strings must be escaped as \\"\n' +
+        '- Validate your JSON structure before responding\n\n' +
+        'Before responding, verify: Every " has a matching ", every { has a matching }, every [ has a matching ], no trailing commas, all quotes inside strings are escaped.',
     });
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
 
-    // Parse JSON (reuse existing logic or simple parse if robust)
+    // Parse JSON with robust error handling (similar to generateSteelmanArgument)
     let parsed;
+    let cleanedText = text.trim();
+
+    // Remove markdown code blocks if present
+    if (cleanedText.match(/^```json/i)) {
+      cleanedText = cleanedText.replace(/^```json\s*/i, '').replace(/\s*```\s*$/, '');
+    } else if (cleanedText.startsWith('```')) {
+      cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```\s*$/, '');
+    }
+
+    // Extract JSON if there's extra text
+    const jsonStart = cleanedText.indexOf('{');
+    const jsonEnd = cleanedText.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      cleanedText = cleanedText.substring(jsonStart, jsonEnd + 1);
+    }
+
     try {
-      parsed = JSON.parse(text);
-    } catch (e) {
-      // Simple cleanup attempt
-      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      parsed = JSON.parse(cleanText);
+      parsed = JSON.parse(cleanedText);
+    } catch (parseError: unknown) {
+      // Try extraction and repair strategies
+      let extractedJson = extractValidJson(cleanedText);
+      if (extractedJson && extractedJson !== cleanedText) {
+        try {
+          parsed = JSON.parse(extractedJson);
+        } catch {
+          // Continue to repair attempt
+        }
+      }
+
+      // Try multiple repair strategies if still not parsed
+      if (!parsed) {
+        const jsonToRepair = extractedJson || cleanedText;
+        let repairAttempts = 0;
+        const maxRepairAttempts = 5;
+        
+        while (!parsed && repairAttempts < maxRepairAttempts) {
+          repairAttempts++;
+          try {
+            let repaired = jsonToRepair;
+            
+            // Apply repairs in sequence
+            if (repairAttempts === 1) {
+              repaired = repairJson(jsonToRepair);
+            } else if (repairAttempts === 2) {
+              repaired = aggressivelyRepairStrings(jsonToRepair);
+              repaired = repairJson(repaired);
+            } else if (repairAttempts === 3) {
+              repaired = fixMissingCommas(jsonToRepair);
+              repaired = repairJson(repaired);
+            } else if (repairAttempts === 4) {
+              repaired = aggressivelyRepairStrings(jsonToRepair);
+              repaired = fixMissingCommas(repaired);
+              repaired = repairJson(repaired);
+            } else {
+              repaired = jsonToRepair;
+              for (let pass = 0; pass < 3; pass++) {
+                repaired = aggressivelyRepairStrings(repaired);
+                repaired = fixMissingCommas(repaired);
+                repaired = repairJson(repaired);
+              }
+            }
+            
+            parsed = JSON.parse(repaired);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[AI Service] Successfully repaired article JSON on attempt ${repairAttempts}`);
+            }
+            break;
+          } catch (repairError: unknown) {
+            if (repairAttempts >= maxRepairAttempts) {
+              const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown error';
+              if (process.env.NODE_ENV === 'development') {
+                console.error('[AI Service] All article JSON repair attempts failed');
+                console.error('[AI Service] Error:', errorMessage);
+                console.error('[AI Service] Content preview:', jsonToRepair.substring(0, 500));
+              }
+              throw new Error(
+                `Failed to parse article analysis JSON: ${errorMessage}. ` +
+                `Please try analyzing the article again.`
+              );
+            }
+          }
+        }
+      }
+    }
+
+    // Validate parsed structure
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Invalid JSON structure: response is not an object');
+    }
+
+    // Validate and sanitize claims array
+    let claims = [];
+    if (Array.isArray(parsed.claims)) {
+      claims = parsed.claims
+        .filter(claim => claim && typeof claim === 'object')
+        .map(claim => ({
+          claim: typeof claim.claim === 'string' ? claim.claim : (typeof claim.quote === 'string' ? claim.quote : ''),
+          quote: typeof claim.quote === 'string' ? claim.quote : (typeof claim.claim === 'string' ? claim.claim : ''),
+          counterArgument: typeof claim.counterArgument === 'string' ? claim.counterArgument : '',
+          reasoning: typeof claim.reasoning === 'string' ? claim.reasoning : '',
+          strength: typeof claim.strength === 'number' ? Math.max(1, Math.min(10, claim.strength)) : 5,
+        }))
+        .filter(claim => claim.claim.length > 0 && claim.counterArgument.length > 0);
     }
 
     const analysisResponse: ArticleAnalysisResponse = {
-      summary: parsed.summary || 'No summary available',
-      claims: parsed.claims || [],
-      factChecks: parsed.factChecks || [],
-      biasScore: parsed.biasScore || 5,
-      biasAnalysis: parsed.biasAnalysis || 'No bias analysis available',
+      summary: typeof parsed.summary === 'string' ? parsed.summary : 'No summary available',
+      claims,
+      factChecks: Array.isArray(parsed.factChecks) ? parsed.factChecks.filter(fc => typeof fc === 'object') : [],
+      biasScore: typeof parsed.biasScore === 'number' ? Math.max(0, Math.min(10, parsed.biasScore)) : 5,
+      biasAnalysis: typeof parsed.biasAnalysis === 'string' ? parsed.biasAnalysis : 'No bias analysis available',
       processingTime: Date.now() - startTime,
     };
 

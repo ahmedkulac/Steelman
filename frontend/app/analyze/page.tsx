@@ -321,19 +321,26 @@ export default function AnalyzePage() {
                                                     </blockquote>
                                                 </div>
 
-                                                <div className="mt-4">
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <p className="text-xs font-bold text-yellow-600 dark:text-yellow-300 uppercase tracking-wide">
-                                                            Steelman Counter-Argument
-                                                        </p>
+                                                <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 h-6 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                                                {index + 1}
+                                                            </span>
+                                                            <p className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
+                                                                Counter-Argument
+                                                            </p>
+                                                        </div>
                                                         <CopyButton text={claim.counterArgument} size="sm" />
                                                     </div>
-                                                    <p className="text-slate-800 dark:text-slate-200 font-medium mb-2">
+                                                    <p className="text-base font-semibold text-slate-900 dark:text-slate-100 leading-relaxed mb-3">
                                                         {claim.counterArgument}
                                                     </p>
-                                                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                                                        {claim.reasoning}
-                                                    </p>
+                                                    {claim.reasoning && (
+                                                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-3 border-l-2 border-blue-300 dark:border-blue-600">
+                                                            {claim.reasoning}
+                                                        </p>
+                                                    )}
 
                                                     <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
                                                         {claim.sources && claim.sources.length > 0 && (

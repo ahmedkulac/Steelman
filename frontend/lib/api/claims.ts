@@ -26,14 +26,22 @@ export interface Source {
 }
 
 /**
+ * Evidence item with optional associated sources
+ */
+export interface EvidenceItem {
+  text: string; // The evidence point text
+  sources?: Source[]; // Sources supporting this specific evidence point
+}
+
+/**
  * Counter-argument structure from API
  */
 export interface CounterArgument {
   argument: string; // Main counter-argument text
   reasoning: string; // Why this counter-argument is strong
-  evidence?: string[]; // Supporting evidence points
+  evidence?: (string | EvidenceItem)[]; // Supporting evidence points (can be strings or objects with sources)
   strength: number; // Strength score 1-10
-  sources?: Source[]; // Online sources supporting this counter-argument
+  sources?: Source[]; // Online sources supporting this counter-argument (general sources)
 }
 
 /**

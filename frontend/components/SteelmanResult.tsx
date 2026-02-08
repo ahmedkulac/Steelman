@@ -79,63 +79,65 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
 
       {/* Successful Results */}
       {processingStatus === 'completed' && steelmanArguments && steelmanArguments.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Steelman Counter-Arguments
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            The strongest possible opposing viewpoints to help you critically
-            evaluate this claim.
-          </p>
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+              Counter-Arguments
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Strong opposing viewpoints to help you critically evaluate this claim.
+            </p>
+          </div>
 
           {/* Render each counter-argument */}
           {steelmanArguments.map((arg: CounterArgument, index: number) => (
             <div
               key={index}
-              className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm"
+              className="relative p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-shadow"
             >
-              {/* Counter-argument Header */}
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Counter-Argument {index + 1}
-                </h3>
+              {/* Counter-argument Number Badge */}
+              <div className="absolute -top-3 -left-3 w-10 h-10 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-lg shadow-md">
+                {index + 1}
               </div>
 
-              {/* Counter-argument Content */}
-              <div className="space-y-4">
-                {/* Main Argument */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Argument
-                    </h4>
-                    <CopyButton text={arg.argument} size="sm" />
-                  </div>
-                  <p className="text-gray-900 dark:text-gray-100">
-                    {arg.argument}
+              {/* Copy Button - Top Right */}
+              <div className="absolute top-4 right-4">
+                <CopyButton text={arg.argument} size="sm" />
+              </div>
+
+              {/* Main Argument - Prominent and Easy to Read */}
+              <div className="pr-12 mb-4">
+                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-relaxed">
+                  {arg.argument}
+                </p>
+              </div>
+
+              {/* Reasoning - Simplified, Less Prominent */}
+              {arg.reasoning && (
+                <div className="mb-4 pl-4 border-l-4 border-blue-300 dark:border-blue-600">
+                  <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {arg.reasoning}
                   </p>
                 </div>
+              )}
 
-                {/* Reasoning (if provided) */}
-                {arg.reasoning && (
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Reasoning
-                    </h4>
-                    <p className="text-gray-700 dark:text-gray-300">
-                      {arg.reasoning}
-                    </p>
-                  </div>
-                )}
-
+              {/* Evidence and Sources - Collapsible or Simplified */}
+              <div className="space-y-3 mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
                 {/* Evidence List (if provided) */}
                 {arg.evidence && arg.evidence.length > 0 && (
-                  <EvidenceList evidence={arg.evidence} />
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
+                      Key Evidence
+                    </h4>
+                    <EvidenceList evidence={arg.evidence} />
+                  </div>
                 )}
 
                 {/* Sources List (if provided) */}
                 {arg.sources && arg.sources.length > 0 && (
-                  <SourcesList sources={arg.sources} title="Sources Supporting This Counter-Argument" />
+                  <div>
+                    <SourcesList sources={arg.sources} title="Sources" />
+                  </div>
                 )}
               </div>
             </div>
