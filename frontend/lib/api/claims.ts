@@ -1,35 +1,61 @@
+/**
+ * Claims API Client
+ * 
+ * Type-safe API client for interacting with the claims backend.
+ * Provides functions for:
+ * - Submitting claims
+ * - Retrieving claim results
+ * - Listing claims with pagination
+ * - Submitting feedback
+ */
+
 import api from '../api';
 
+/**
+ * Counter-argument structure from API
+ */
 export interface CounterArgument {
-  argument: string;
-  reasoning: string;
-  evidence?: string[];
-  strength: number;
+  argument: string; // Main counter-argument text
+  reasoning: string; // Why this counter-argument is strong
+  evidence?: string[]; // Supporting evidence points
+  strength: number; // Strength score 1-10
 }
 
+/**
+ * Claim structure from API
+ */
 export interface Claim {
   id: string;
   content: string;
   category?: string;
   steelmanArguments?: CounterArgument[];
-  confidenceScore?: number;
+  confidenceScore?: number; // 0-1
   processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
   errorMessage?: string;
   createdAt: string;
   updatedAt: string;
 }
 
+/**
+ * Request payload for creating a claim
+ */
 export interface CreateClaimRequest {
   claim: string;
   category?: 'politics' | 'science' | 'health' | 'technology' | 'economics' | 'other';
   context?: string;
 }
 
+/**
+ * Response from claim creation
+ */
 export interface CreateClaimResponse extends Claim {
-  cached?: boolean;
-  message?: string;
+  cached?: boolean; // True if result was from cache
+  message?: string; // Status message
 }
 
+/**
+ * Paginated claims list response
+ */
 export interface ClaimsListResponse {
   claims: Claim[];
   pagination: {
@@ -40,14 +66,20 @@ export interface ClaimsListResponse {
   };
 }
 
+/**
+ * Feedback submission payload
+ */
 export interface FeedbackRequest {
-  rating?: number;
+  rating?: number; // 1-5 stars
   helpful?: boolean;
   comment?: string;
 }
 
 /**
  * Submit a new claim for fact-checking
+ * 
+ * @param data - Claim data (text, category, context)
+ * @returns Promise resolving to claim response with ID
  */
 export async function createClaim(
   data: CreateClaimRequest
@@ -58,6 +90,9 @@ export async function createClaim(
 
 /**
  * Get a specific claim by ID
+ * 
+ * @param id - Claim ID
+ * @returns Promise resolving to claim with results
  */
 export async function getClaim(id: string): Promise<Claim> {
   const response = await api.get<Claim>(`/claims/${id}`);
@@ -65,7 +100,12 @@ export async function getClaim(id: string): Promise<Claim> {
 }
 
 /**
- * List claims with pagination
+ * List claims with pagination and optional category filter
+ * 
+ * @param page - Page number (default: 1)
+ * @param limit - Items per page (default: 20)
+ * @param category - Optional category filter
+ * @returns Promise resolving to paginated claims list
  */
 export async function listClaims(
   page: number = 1,
@@ -84,7 +124,10 @@ export async function listClaims(
 }
 
 /**
- * Submit feedback on a claim
+ * Submit feedback on a claim's counter-arguments
+ * 
+ * @param claimId - Claim ID
+ * @param feedback - Feedback data (rating, helpful, comment)
  */
 export async function submitFeedback(
   claimId: string,

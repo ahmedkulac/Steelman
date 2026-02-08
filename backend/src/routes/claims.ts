@@ -1,3 +1,13 @@
+/**
+ * Claims API Routes
+ * 
+ * Handles all claim-related endpoints:
+ * - POST /api/claims - Submit a new claim for fact-checking
+ * - GET /api/claims/:id - Get a specific claim and its results
+ * - GET /api/claims - List claims with pagination
+ * - POST /api/claims/:id/feedback - Submit feedback on a claim
+ */
+
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
@@ -12,7 +22,13 @@ import { claimRateLimiter } from '../utils/rateLimit';
 const router = Router();
 const prisma = new PrismaClient();
 
-// Helper function to safely parse JSON string
+/**
+ * Safely parse JSON string to CounterArgument array
+ * Used for SQLite compatibility (stores JSON as string)
+ * 
+ * @param jsonString - JSON string from database
+ * @returns Parsed counter arguments array or null if invalid
+ */
 function parseSteelmanArguments(
   jsonString: string | null | undefined
 ): CounterArgument[] | null {
@@ -25,7 +41,13 @@ function parseSteelmanArguments(
   }
 }
 
-// Helper function to format claim response with parsed JSON
+/**
+ * Format claim response by parsing JSON strings to objects
+ * Ensures frontend receives properly formatted data
+ * 
+ * @param claim - Claim object from database
+ * @returns Formatted claim with parsed steelmanArguments
+ */
 function formatClaimResponse(claim: any) {
   return {
     ...claim,
@@ -33,7 +55,10 @@ function formatClaimResponse(claim: any) {
   };
 }
 
-// Validation schemas
+/**
+ * Validation schema for claim submission
+ * Uses Zod for type-safe validation
+ */
 const createClaimSchema = z.object({
   claim: z
     .string()
@@ -45,10 +70,22 @@ const createClaimSchema = z.object({
   context: z.string().max(500).optional(),
 });
 
-// POST /api/claims - Submit a new claim for fact-checking
+/**
+ * POST /api/claims
+ * Submit a new claim for fact-checking
+ * 
+ * Flow:
+ * 1. Validate input
+ * 2. Check cache for identical claims
+ * 3. Create claim record (pending/processing status)
+ * 4. Generate steelman arguments asynchronously
+ * 5. Return immediately with pending status
+ * 
+ * Rate limited: 10 requests/hour per IP
+ */
 router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
   try {
-    // Validate input
+    // Validate input using Zod schema
     const validationResult = createClaimSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
@@ -59,18 +96,18 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
 
     const { claim, category, context } = validationResult.data;
 
-    // Check cache first
+    // Check cache first to avoid duplicate API calls
     const cacheKey = generateCacheKey(claim);
     const cachedResult = await getCache(`claim:${cacheKey}`);
 
     if (cachedResult) {
+      // Return cached result immediately
       const cachedData = JSON.parse(cachedResult);
-      // Create a new claim record with cached data
       const savedClaim = await prisma.claim.create({
         data: {
           content: claim,
           category: category || null,
-          steelmanArguments: JSON.stringify(cachedData.counterArguments),
+          steelmanArguments: JSON.stringify(cachedData.counterArguments), // SQLite: store as string
           confidenceScore: cachedData.confidence,
           processingStatus: 'completed',
           ipAddress: req.ip || null,
@@ -85,6 +122,7 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
     }
 
     // Create claim record with pending status
+    // AI processing happens asynchronously
     const newClaim = await prisma.claim.create({
       data: {
         content: claim,
@@ -95,20 +133,20 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
       },
     });
 
-    // Generate steelman argument asynchronously
+    // Generate steelman argument asynchronously (non-blocking)
     generateSteelmanArgument({ claim, category, context })
       .then(async (result) => {
-        // Update claim with results
+        // Update claim with AI-generated results
         await prisma.claim.update({
           where: { id: newClaim.id },
           data: {
-            steelmanArguments: JSON.stringify(result.counterArguments),
+            steelmanArguments: JSON.stringify(result.counterArguments), // SQLite: store as string
             confidenceScore: result.confidence,
             processingStatus: 'completed',
           },
         });
 
-        // Cache the result
+        // Cache the result for future identical claims (7 days)
         await setCache(
           `claim:${cacheKey}`,
           JSON.stringify({
@@ -116,10 +154,11 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
             confidence: result.confidence,
             relatedTopics: result.relatedTopics,
           }),
-          604800
-        ); // 7 days
+          604800 // 7 days in seconds
+        );
       })
       .catch(async (error) => {
+        // Handle AI generation errors gracefully
         console.error('Error generating steelman argument:', error);
         await prisma.claim.update({
           where: { id: newClaim.id },
@@ -130,7 +169,8 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
         });
       });
 
-    // Return immediately with pending status
+    // Return immediately with pending status (202 Accepted)
+    // Frontend will poll for updates
     return res.status(202).json({
       ...formatClaimResponse(newClaim),
       message: 'Claim submitted. Processing in background.',
@@ -144,7 +184,16 @@ router.post('/', claimRateLimiter, async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/claims/:id - Get a specific claim and its results
+/**
+ * GET /api/claims/:id
+ * Get a specific claim and its results
+ * 
+ * Returns:
+ * - Claim details
+ * - Steelman counter-arguments (if processed)
+ * - Processing status
+ * - Recent feedback (last 10)
+ */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -153,7 +202,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       where: { id },
       include: {
         feedbacks: {
-          take: 10,
+          take: 10, // Limit to last 10 feedback entries
           orderBy: { createdAt: 'desc' },
         },
       },
@@ -166,6 +215,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       });
     }
 
+    // Format response with parsed JSON
     return res.json(formatClaimResponse(claim));
   } catch (error) {
     console.error('Error fetching claim:', error);
@@ -176,22 +226,35 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/claims - List claims with pagination
+/**
+ * GET /api/claims
+ * List claims with pagination and optional category filter
+ * 
+ * Query parameters:
+ * - page: Page number (default: 1)
+ * - limit: Items per page (default: 20, max: 100)
+ * - category: Filter by category (optional)
+ * 
+ * Returns paginated list of claims
+ */
 router.get('/', async (req: Request, res: Response) => {
   try {
+    // Parse pagination parameters
     const page = parseInt(req.query.page as string) || 1;
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100); // Max 100 per page
     const skip = (page - 1) * limit;
     const category = req.query.category as string | undefined;
 
+    // Build where clause for filtering
     const where = category ? { category } : {};
 
+    // Fetch claims and total count in parallel
     const [claims, total] = await Promise.all([
       prisma.claim.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' }, // Newest first
         select: {
           id: true,
           content: true,
@@ -199,14 +262,14 @@ router.get('/', async (req: Request, res: Response) => {
           processingStatus: true,
           confidenceScore: true,
           createdAt: true,
-          steelmanArguments: true, // Include to parse if needed
+          steelmanArguments: true, // Include to parse for frontend
         },
       }),
       prisma.claim.count({ where }),
     ]);
 
     return res.json({
-      claims: claims.map(formatClaimResponse),
+      claims: claims.map(formatClaimResponse), // Parse JSON strings
       pagination: {
         page,
         limit,
@@ -223,13 +286,21 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/claims/:id/feedback - Submit feedback on a claim
+/**
+ * POST /api/claims/:id/feedback
+ * Submit feedback on a claim's counter-arguments
+ * 
+ * Body:
+ * - rating: 1-5 stars (optional)
+ * - helpful: boolean (optional)
+ * - comment: string (optional)
+ */
 router.post('/:id/feedback', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { rating, helpful, comment } = req.body;
 
-    // Validate feedback
+    // Validate rating if provided
     if (rating && (rating < 1 || rating > 5)) {
       return res.status(400).json({
         error: 'Validation error',
@@ -237,7 +308,7 @@ router.post('/:id/feedback', async (req: Request, res: Response) => {
       });
     }
 
-    // Check if claim exists
+    // Verify claim exists
     const claim = await prisma.claim.findUnique({
       where: { id },
     });
@@ -249,6 +320,7 @@ router.post('/:id/feedback', async (req: Request, res: Response) => {
       });
     }
 
+    // Create feedback record
     const feedback = await prisma.feedback.create({
       data: {
         claimId: id,

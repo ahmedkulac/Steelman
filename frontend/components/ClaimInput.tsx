@@ -1,3 +1,16 @@
+/**
+ * ClaimInput Component
+ * 
+ * Main form component for submitting claims to be fact-checked.
+ * Features:
+ * - Form validation using React Hook Form + Zod
+ * - Character counter (max 1000 chars)
+ * - Category selection
+ * - Optional context field
+ * - Error handling and loading states
+ * - Mobile-responsive design
+ */
+
 'use client';
 
 import { useState } from 'react';
@@ -7,6 +20,10 @@ import { z } from 'zod';
 import { createClaim } from '@/lib/api/claims';
 import { useRouter } from 'next/navigation';
 
+/**
+ * Validation schema for claim submission
+ * Matches backend validation for consistency
+ */
 const claimSchema = z.object({
   claim: z
     .string()
@@ -20,6 +37,9 @@ const claimSchema = z.object({
 
 type ClaimFormData = z.infer<typeof claimSchema>;
 
+/**
+ * Available claim categories
+ */
 const categories = [
   { value: 'politics', label: 'Politics' },
   { value: 'science', label: 'Science' },
@@ -29,11 +49,23 @@ const categories = [
   { value: 'other', label: 'Other' },
 ] as const;
 
+/**
+ * ClaimInput Component
+ * 
+ * Renders a form for submitting claims with:
+ * - Text area for claim input
+ * - Category dropdown
+ * - Optional context field
+ * - Real-time character counting
+ * - Form validation
+ * - Submit button with loading state
+ */
 export default function ClaimInput() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // React Hook Form setup with Zod validation
   const {
     register,
     handleSubmit,
@@ -43,19 +75,28 @@ export default function ClaimInput() {
     resolver: zodResolver(claimSchema),
   });
 
+  // Watch claim text for character counter
   const claimText = watch('claim', '');
   const characterCount = claimText.length;
   const maxLength = 1000;
 
+  /**
+   * Handle form submission
+   * 
+   * 1. Submit claim to backend API
+   * 2. Redirect to results page
+   * 3. Handle errors gracefully
+   */
   const onSubmit = async (data: ClaimFormData) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
       const response = await createClaim(data);
-      // Redirect to results page
+      // Redirect to results page with claim ID
       router.push(`/results/${response.id}`);
     } catch (err: any) {
+      // Display error message to user
       setError(
         err.response?.data?.message ||
           err.message ||
@@ -67,6 +108,7 @@ export default function ClaimInput() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-4">
+      {/* Claim Input Field */}
       <div>
         <label
           htmlFor="claim"
@@ -83,11 +125,13 @@ export default function ClaimInput() {
           disabled={isSubmitting}
         />
         <div className="flex justify-between items-center mt-1">
+          {/* Validation Error */}
           {errors.claim && (
             <p className="text-sm text-red-600 dark:text-red-400">
               {errors.claim.message}
             </p>
           )}
+          {/* Character Counter */}
           <p
             className={`text-sm ml-auto ${
               characterCount > maxLength * 0.9
@@ -100,6 +144,7 @@ export default function ClaimInput() {
         </div>
       </div>
 
+      {/* Category Selection */}
       <div>
         <label
           htmlFor="category"
@@ -122,6 +167,7 @@ export default function ClaimInput() {
         </select>
       </div>
 
+      {/* Additional Context Field */}
       <div>
         <label
           htmlFor="context"
@@ -144,12 +190,14 @@ export default function ClaimInput() {
         )}
       </div>
 
+      {/* Error Message Display */}
       {error && (
         <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
         </div>
       )}
 
+      {/* Submit Button */}
       <button
         type="submit"
         disabled={isSubmitting}

@@ -1,7 +1,22 @@
+/**
+ * API Client Configuration
+ * 
+ * Axios instance configured for backend API communication.
+ * Features:
+ * - Base URL configuration
+ * - Request interceptors for authentication (future)
+ * - Response interceptors for error handling
+ * - Automatic token management
+ */
+
 import axios from 'axios';
 
+// API base URL from environment or default to localhost
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+/**
+ * Axios instance with base configuration
+ */
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -9,9 +24,15 @@ export const api = axios.create({
   },
 });
 
-// Request interceptor for auth tokens
+/**
+ * Request interceptor
+ * 
+ * Adds authentication token to requests if available.
+ * Token is stored in localStorage (for future authentication feature).
+ */
 api.interceptors.request.use(
   (config) => {
+    // Only run in browser (not SSR)
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
       if (token) {
@@ -25,14 +46,21 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
+/**
+ * Response interceptor
+ * 
+ * Handles common error responses:
+ * - 401 Unauthorized: Removes token and redirects to login (future)
+ * - Other errors: Passes through for component-level handling
+ */
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle unauthorized access (for future authentication)
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      // Handle unauthorized access
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Redirect to login page when authentication is implemented
+      // window.location.href = '/login';
     }
     return Promise.reject(error);
   }

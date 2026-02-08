@@ -1,8 +1,23 @@
+/**
+ * Users API Routes
+ * 
+ * Placeholder routes for user management.
+ * Currently returns empty responses - to be implemented when authentication is added.
+ * 
+ * Future endpoints:
+ * - GET /api/users - List users (admin only)
+ * - GET /api/users/:id - Get user profile
+ * - POST /api/users - Create user (registration)
+ */
+
 import { Router } from 'express';
 
 const router = Router();
 
-// GET /api/users
+/**
+ * GET /api/users
+ * List users (placeholder)
+ */
 router.get('/', (req, res) => {
   res.json({ 
     message: 'Users endpoint',
@@ -10,7 +25,10 @@ router.get('/', (req, res) => {
   });
 });
 
-// GET /api/users/:id
+/**
+ * GET /api/users/:id
+ * Get user by ID (placeholder)
+ */
 router.get('/:id', (req, res) => {
   res.json({ 
     message: 'Get user by ID',
@@ -18,7 +36,10 @@ router.get('/:id', (req, res) => {
   });
 });
 
-// POST /api/users
+/**
+ * POST /api/users
+ * Create user (placeholder)
+ */
 router.post('/', (req, res) => {
   res.json({ 
     message: 'Create user',

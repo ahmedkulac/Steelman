@@ -1,3 +1,17 @@
+/**
+ * Backend Server Entry Point
+ * 
+ * Express.js API server for the Fact Checker application.
+ * Handles claim submissions, AI processing, and result retrieval.
+ * 
+ * Features:
+ * - RESTful API endpoints
+ * - Rate limiting
+ * - Optional Redis caching
+ * - Error handling
+ * - CORS enabled
+ */
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -8,19 +22,33 @@ import { notFoundHandler } from './middleware/notFoundHandler';
 import apiRoutes from './routes';
 import { initRedis } from './utils/cache';
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// ==================== Middleware ====================
+
+// Security headers
 app.use(helmet());
+
+// Enable CORS for frontend
 app.use(cors());
+
+// Request logging
 app.use(morgan('dev'));
+
+// Parse JSON bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Root endpoint
+// ==================== Routes ====================
+
+/**
+ * Root endpoint - API information
+ * GET /
+ */
 app.get('/', (req, res) => {
   res.json({
     message: 'Fact Checker API',
@@ -35,7 +63,10 @@ app.get('/', (req, res) => {
   });
 });
 
-// Health check endpoint
+/**
+ * Health check endpoint
+ * GET /health
+ */
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -44,20 +75,31 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
+// API routes (all under /api prefix)
 app.use('/api', apiRoutes);
 
-// Error handling
+// ==================== Error Handling ====================
+
+// 404 handler (must be after all routes)
 app.use(notFoundHandler);
+
+// Global error handler (must be last)
 app.use(errorHandler);
 
-// Initialize Redis (non-blocking, optional)
-// App works fine without Redis - caching will be disabled
+// ==================== Initialization ====================
+
+/**
+ * Initialize Redis (non-blocking, optional)
+ * 
+ * App works fine without Redis - caching will be disabled.
+ * This is called asynchronously and won't block server startup.
+ */
 initRedis().catch((error) => {
   console.warn('Redis initialization failed (optional):', error.message);
 });
 
-// Start server
+// ==================== Start Server ====================
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);

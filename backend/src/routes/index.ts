@@ -1,3 +1,10 @@
+/**
+ * API Routes Index
+ * 
+ * Main router that aggregates all API route modules.
+ * All routes are prefixed with /api
+ */
+
 import { Router } from 'express';
 import userRoutes from './users';
 import claimRoutes from './claims';
@@ -5,10 +12,13 @@ import claimRoutes from './claims';
 const router = Router();
 
 // Route modules
-router.use('/users', userRoutes);
-router.use('/claims', claimRoutes);
+router.use('/users', userRoutes); // User-related routes (placeholder for future auth)
+router.use('/claims', claimRoutes); // Claim fact-checking routes
 
-// Example route
+/**
+ * GET /api
+ * API information endpoint
+ */
 router.get('/', (req, res) => {
   res.json({ 
     message: 'Welcome to the Fact Checker API',

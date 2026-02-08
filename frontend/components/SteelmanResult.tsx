@@ -1,3 +1,15 @@
+/**
+ * SteelmanResult Component
+ * 
+ * Displays the results of fact-checking a claim, including:
+ * - Original claim
+ * - Confidence score
+ * - Steelman counter-arguments with reasoning and evidence
+ * - Processing status (pending, processing, completed, failed)
+ * 
+ * Handles all states gracefully with appropriate UI feedback.
+ */
+
 'use client';
 
 import { CounterArgument, Claim } from '@/lib/api/claims';
@@ -8,10 +20,19 @@ interface SteelmanResultProps {
   claim: Claim;
 }
 
+/**
+ * SteelmanResult Component
+ * 
+ * Renders the fact-checking results with:
+ * - Loading states during processing
+ * - Error states if processing failed
+ * - Success state with counter-arguments
+ */
 export default function SteelmanResult({ claim }: SteelmanResultProps) {
   const { content, steelmanArguments, confidenceScore, processingStatus } =
     claim;
 
+  // Show loading state while processing
   if (processingStatus === 'pending' || processingStatus === 'processing') {
     return (
       <div className="w-full space-y-4">
@@ -27,6 +48,7 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
     );
   }
 
+  // Show error state if processing failed
   if (processingStatus === 'failed') {
     return (
       <div className="w-full space-y-4">
@@ -39,6 +61,7 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
     );
   }
 
+  // Show message if no counter-arguments generated
   if (!steelmanArguments || steelmanArguments.length === 0) {
     return (
       <div className="w-full space-y-4">
@@ -51,9 +74,10 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
     );
   }
 
+  // Render successful results
   return (
     <div className="w-full space-y-6">
-      {/* Original Claim */}
+      {/* Original Claim Display */}
       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
           Original Claim
@@ -61,14 +85,14 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
         <p className="text-gray-900 dark:text-gray-100">{content}</p>
       </div>
 
-      {/* Confidence Score */}
+      {/* Confidence Score Badge */}
       {confidenceScore !== undefined && (
         <div className="flex items-center justify-center">
           <ConfidenceBadge score={confidenceScore} />
         </div>
       )}
 
-      {/* Counter Arguments */}
+      {/* Counter Arguments Section */}
       <div className="space-y-4">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Steelman Counter-Arguments
@@ -78,15 +102,18 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
           evaluate this claim.
         </p>
 
+        {/* Render each counter-argument */}
         {steelmanArguments.map((arg: CounterArgument, index: number) => (
           <div
             key={index}
             className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm"
           >
+            {/* Counter-argument Header */}
             <div className="flex items-start justify-between mb-3">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Counter-Argument {index + 1}
               </h3>
+              {/* Strength Badge */}
               {arg.strength && (
                 <span className="px-3 py-1 text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full">
                   Strength: {arg.strength}/10
@@ -94,7 +121,9 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
               )}
             </div>
 
+            {/* Counter-argument Content */}
             <div className="space-y-4">
+              {/* Main Argument */}
               <div>
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Argument
@@ -104,6 +133,7 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
                 </p>
               </div>
 
+              {/* Reasoning (if provided) */}
               {arg.reasoning && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -115,6 +145,7 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
                 </div>
               )}
 
+              {/* Evidence List (if provided) */}
               {arg.evidence && arg.evidence.length > 0 && (
                 <EvidenceList evidence={arg.evidence} />
               )}

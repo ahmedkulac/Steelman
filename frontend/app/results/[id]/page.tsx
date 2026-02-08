@@ -1,3 +1,14 @@
+/**
+ * Results Page
+ * 
+ * Dynamic route page that displays the fact-checking results for a specific claim.
+ * Features:
+ * - Auto-polling while claim is processing
+ * - Loading states
+ * - Error handling
+ * - Results display with steelman counter-arguments
+ */
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -5,6 +16,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { getClaim, Claim } from '@/lib/api/claims';
 import SteelmanResult from '@/components/SteelmanResult';
 
+/**
+ * ResultsPage Component
+ * 
+ * Fetches and displays claim results with automatic polling
+ * while the claim is being processed by the AI.
+ */
 export default function ResultsPage() {
   const params = useParams();
   const router = useRouter();
@@ -15,17 +32,25 @@ export default function ResultsPage() {
 
   const claimId = params.id as string;
 
+  /**
+   * Effect hook for fetching claim and setting up polling
+   * 
+   * Polls every 3 seconds while claim is processing,
+   * stops when claim is completed or failed.
+   */
   useEffect(() => {
+    // Initial fetch
     fetchClaim();
 
-    // Poll for updates if claim is still processing
+    // Set up polling interval if claim is still processing
     let pollInterval: NodeJS.Timeout | null = null;
     if (polling) {
       pollInterval = setInterval(() => {
-        fetchClaim(false);
+        fetchClaim(false); // Don't show loading spinner on poll updates
       }, 3000); // Poll every 3 seconds
     }
 
+    // Cleanup interval on unmount
     return () => {
       if (pollInterval) {
         clearInterval(pollInterval);
@@ -33,6 +58,11 @@ export default function ResultsPage() {
     };
   }, [claimId, polling]);
 
+  /**
+   * Fetch claim data from API
+   * 
+   * @param showLoading - Whether to show loading spinner (default: true)
+   */
   const fetchClaim = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
@@ -40,10 +70,11 @@ export default function ResultsPage() {
       setClaim(data);
       setError(null);
 
-      // Stop polling if claim is completed or failed
+      // Stop polling if claim processing is complete
       if (data.processingStatus === 'completed' || data.processingStatus === 'failed') {
         setPolling(false);
       } else {
+        // Continue polling if still processing
         setPolling(true);
       }
     } catch (err: any) {
@@ -52,12 +83,13 @@ export default function ResultsPage() {
           err.message ||
           'Failed to load claim results'
       );
-      setPolling(false);
+      setPolling(false); // Stop polling on error
     } finally {
       if (showLoading) setLoading(false);
     }
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -69,6 +101,7 @@ export default function ResultsPage() {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -87,13 +120,16 @@ export default function ResultsPage() {
     );
   }
 
+  // Safety check
   if (!claim) {
     return null;
   }
 
+  // Success state - render results
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
+        {/* Back Button */}
         <button
           onClick={() => router.push('/')}
           className="mb-6 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center space-x-2"
@@ -102,6 +138,7 @@ export default function ResultsPage() {
           <span>Back to Home</span>
         </button>
 
+        {/* Results Component */}
         <SteelmanResult claim={claim} />
       </div>
     </main>
