@@ -190,7 +190,6 @@ async function extractTikTok(url: string): Promise<SocialMediaContent> {
     } catch (oembedError) {
       // Fall back to scraping if oEmbed fails
       if (process.env.NODE_ENV === 'development') {
-        console.log('[Social Media] TikTok oEmbed failed, falling back to scraping');
       }
     }
 
