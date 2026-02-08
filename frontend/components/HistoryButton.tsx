@@ -17,6 +17,7 @@ import Link from 'next/link';
 import HistorySidebar from './HistorySidebar';
 import { getCacheStats, getAllCachedClaims } from '@/lib/cache';
 import { Claim } from '@/lib/api/claims';
+import { formatRelativeDate } from '@/lib/dateUtils';
 
 interface CachedClaimEntry {
   claim: string;
@@ -68,8 +69,8 @@ export default function HistoryButton() {
         
         // Load recent claims for dropdown - localStorage access is synchronous
         const claims = getAllCachedClaims<Claim>();
-        // Sort by most recent (newest first) and take top 5
-        const sorted = claims.sort((a, b) => b.cachedAt - a.cachedAt).slice(0, 5);
+        // Sort by most recent (newest first) and take top 3
+        const sorted = claims.sort((a, b) => b.cachedAt - a.cachedAt).slice(0, 3);
         setRecentClaims(sorted);
       } catch (error) {
         // Handle errors gracefully - reset to empty state
@@ -164,26 +165,8 @@ export default function HistoryButton() {
 
   // ===== Helper Functions =====
   
-  /**
-   * Format timestamp as relative date (e.g., "3h ago", "2d ago")
-   */
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = Date.now();
-    const diff = now - timestamp;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-
-    if (hours < 1) return 'Just now';
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    
-    // For older dates, show month and day
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  // Using shared date utility for consistent formatting
+  const formatDate = formatRelativeDate;
 
   // ===== Render =====
   

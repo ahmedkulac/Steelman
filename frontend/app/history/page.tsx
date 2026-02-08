@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getAllCachedClaims, clearCache, removeCachedClaim } from '@/lib/cache';
 import { Claim } from '@/lib/api/claims';
 import CopyButton from '@/components/CopyButton';
+import { formatAbsoluteDate, getTimeUntilExpiry } from '@/lib/dateUtils';
 
 interface CachedClaimEntry {
   claim: string;
@@ -40,31 +41,9 @@ export default function HistoryPage() {
     loadCachedClaims();
   };
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getTimeUntilExpiry = (expiresAt: number) => {
-    const now = Date.now();
-    const diff = expiresAt - now;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-    if (days > 0) {
-      return `${days} day${days !== 1 ? 's' : ''} remaining`;
-    } else if (hours > 0) {
-      return `${hours} hour${hours !== 1 ? 's' : ''} remaining`;
-    } else {
-      return 'Expiring soon';
-    }
-  };
+  // Using shared date utilities for consistent formatting
+  const formatDate = (timestamp: number) => 
+    formatAbsoluteDate(timestamp, { includeYear: true, includeTime: true });
 
   if (loading) {
     return (

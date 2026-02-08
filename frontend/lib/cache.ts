@@ -6,20 +6,32 @@
  * 
  * Features:
  * - localStorage-based caching
- * - Automatic expiration (7 days default)
- * - Cache size management
+ * - Automatic expiration (30 days default - increased for better retention)
+ * - Smart cache size management (only cleans up when necessary)
+ * - Preserves recent entries even when storage is full
+ * - Stores original claim text for better recovery
  * - Cache statistics
+ * 
+ * Cache Retention Improvements:
+ * - Increased TTL from 7 to 30 days
+ * - Increased max cache size from 50 to 100 entries
+ * - Less aggressive cleanup (only when cache reaches 90% capacity)
+ * - Smart cleanup preserves most recent entries
+ * - Cleanup runs max once per hour (not on every page load)
+ * - Better error handling for quota exceeded scenarios
  */
 
 interface CacheEntry<T> {
   data: T;
   expiresAt: number;
   cachedAt: number;
+  originalClaim?: string; // Store original claim text for recovery and better UX
 }
 
 const CACHE_PREFIX = 'fact_checker_';
-const DEFAULT_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-const MAX_CACHE_SIZE = 50; // Maximum number of cached items
+const DEFAULT_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds (increased from 7)
+const MAX_CACHE_SIZE = 100; // Maximum number of cached items (increased from 50)
+const CLEANUP_THRESHOLD = 0.9; // Clean up when cache reaches 90% of max size
 
 /**
  * Generate cache key from claim content
@@ -97,6 +109,7 @@ export function setCachedClaim<T>(
       data,
       expiresAt,
       cachedAt: Date.now(),
+      originalClaim: claim, // Store original claim text for better recovery
     };
 
     localStorage.setItem(key, JSON.stringify(entry));
@@ -106,13 +119,27 @@ export function setCachedClaim<T>(
       window.dispatchEvent(new CustomEvent('cacheUpdated'));
     }
     
-    // Clean up old entries if cache is too large
-    cleanupCache();
+    // Only clean up if cache is approaching max size (less aggressive)
+    const stats = getCacheStats();
+    if (stats.entries >= MAX_CACHE_SIZE * CLEANUP_THRESHOLD) {
+      cleanupCache(false); // Only remove expired entries, not force cleanup
+    }
   } catch (error) {
     // Handle quota exceeded or other localStorage errors
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-      // Cache is full, remove oldest entries
-      cleanupCache(true);
+      // Cache is full - try smarter cleanup: remove only expired + oldest entries
+      console.warn('localStorage quota exceeded, attempting smart cleanup...');
+      
+      // First, try removing only expired entries
+      cleanupCache(false);
+      
+      // Check if we still have space
+      const stats = getCacheStats();
+      if (stats.entries >= MAX_CACHE_SIZE) {
+        // Still full, remove oldest non-expired entries (but keep at least 20 most recent)
+        cleanupCacheSmart(MAX_CACHE_SIZE - 20);
+      }
+      
       // Try again
       try {
         const key = generateCacheKey(claim);
@@ -121,6 +148,7 @@ export function setCachedClaim<T>(
           data,
           expiresAt,
           cachedAt: Date.now(),
+          originalClaim: claim,
         };
         localStorage.setItem(key, JSON.stringify(entry));
         
@@ -129,9 +157,13 @@ export function setCachedClaim<T>(
           window.dispatchEvent(new CustomEvent('cacheUpdated'));
         }
       } catch (retryError) {
-        // Still failed, give up
-        console.warn('Failed to cache claim result:', retryError);
+        // Still failed, log error but don't crash
+        console.error('Failed to cache claim result after cleanup:', retryError);
+        // Notify user if possible (could add toast notification here)
       }
+    } else {
+      // Other errors - log but don't crash
+      console.error('Error caching claim:', error);
     }
   }
 }
@@ -177,7 +209,7 @@ export function clearCache(): void {
 /**
  * Clean up expired and old cache entries
  * 
- * @param force - If true, remove entries even if not expired
+ * @param force - If true, remove entries even if not expired (DEPRECATED - use cleanupCacheSmart instead)
  */
 function cleanupCache(force = false): void {
   try {
@@ -206,16 +238,26 @@ function cleanupCache(force = false): void {
 
     const now = Date.now();
     
-    // Remove expired entries
+    // Remove expired entries (always remove expired, regardless of force flag)
     cacheEntries.forEach((entry) => {
-      if (force || entry.expiresAt < now) {
+      if (entry.expiresAt < now) {
         localStorage.removeItem(entry.key);
       }
     });
 
-    // If still too many entries, remove oldest ones
+    // If force is true, this is deprecated behavior - use cleanupCacheSmart instead
+    // But we'll still handle it for backward compatibility
+    if (force) {
+      // Remove all entries (this is too aggressive, but kept for compatibility)
+      cacheEntries.forEach((entry) => {
+        localStorage.removeItem(entry.key);
+      });
+      return;
+    }
+
+    // If still too many entries, remove oldest ones (but keep recent ones)
     const remainingEntries = cacheEntries
-      .filter((entry) => !force && entry.expiresAt >= now)
+      .filter((entry) => entry.expiresAt >= now)
       .sort((a, b) => a.cachedAt - b.cachedAt);
 
     if (remainingEntries.length > MAX_CACHE_SIZE) {
@@ -225,7 +267,62 @@ function cleanupCache(force = false): void {
       });
     }
   } catch (error) {
-    // Ignore cleanup errors
+    // Log cleanup errors but don't crash
+    console.error('Error during cache cleanup:', error);
+  }
+}
+
+/**
+ * Smart cleanup that removes oldest entries while preserving recent ones
+ * 
+ * @param targetSize - Target number of entries to keep (default: MAX_CACHE_SIZE)
+ */
+function cleanupCacheSmart(targetSize: number = MAX_CACHE_SIZE): void {
+  try {
+    const keys = Object.keys(localStorage);
+    const cacheEntries: Array<{ key: string; cachedAt: number; expiresAt: number }> = [];
+
+    // Collect all cache entries
+    keys.forEach((key) => {
+      if (key.startsWith(CACHE_PREFIX)) {
+        try {
+          const cached = localStorage.getItem(key);
+          if (cached) {
+            const entry: CacheEntry<unknown> = JSON.parse(cached);
+            cacheEntries.push({
+              key,
+              cachedAt: entry.cachedAt,
+              expiresAt: entry.expiresAt,
+            });
+          }
+        } catch (error) {
+          // Invalid entry, remove it
+          localStorage.removeItem(key);
+        }
+      }
+    });
+
+    const now = Date.now();
+    
+    // Separate expired and valid entries
+    const expiredEntries = cacheEntries.filter(entry => entry.expiresAt < now);
+    const validEntries = cacheEntries.filter(entry => entry.expiresAt >= now);
+    
+    // Remove expired entries
+    expiredEntries.forEach(entry => {
+      localStorage.removeItem(entry.key);
+    });
+
+    // If we still have too many valid entries, remove oldest ones
+    if (validEntries.length > targetSize) {
+      const sorted = validEntries.sort((a, b) => a.cachedAt - b.cachedAt);
+      const toRemove = sorted.slice(0, sorted.length - targetSize);
+      toRemove.forEach(entry => {
+        localStorage.removeItem(entry.key);
+      });
+    }
+  } catch (error) {
+    console.error('Error during smart cache cleanup:', error);
   }
 }
 
@@ -294,9 +391,8 @@ export function getAllCachedClaims<T>(): Array<{
           
           // Only include non-expired entries
           if (entry.expiresAt >= Date.now()) {
-            // Try to extract the claim text from the cached data
-            // Since we don't store the original claim text, we'll use the content field
-            const claimText = (entry.data as any)?.content || 'Unknown claim';
+            // Use stored original claim text if available, otherwise fall back to content field
+            const claimText = entry.originalClaim || (entry.data as any)?.content || 'Unknown claim';
             
             claims.push({
               claim: claimText,
@@ -318,7 +414,17 @@ export function getAllCachedClaims<T>(): Array<{
   }
 }
 
-// Clean up expired entries on load
+// Clean up expired entries on load (but don't be too aggressive)
+// Only run cleanup once per session to avoid performance issues
 if (typeof window !== 'undefined') {
-  cleanupCache();
+  // Use a flag to prevent multiple cleanups in the same session
+  const CLEANUP_KEY = `${CACHE_PREFIX}_last_cleanup`;
+  const LAST_CLEANUP = localStorage.getItem(CLEANUP_KEY);
+  const ONE_HOUR = 60 * 60 * 1000;
+  
+  // Only cleanup if we haven't done it in the last hour
+  if (!LAST_CLEANUP || Date.now() - parseInt(LAST_CLEANUP) > ONE_HOUR) {
+    cleanupCache(false); // Only remove expired entries, not force cleanup
+    localStorage.setItem(CLEANUP_KEY, Date.now().toString());
+  }
 }
