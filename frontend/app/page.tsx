@@ -1,11 +1,10 @@
 /**
  * Home Page
  * 
- * Main landing page of the Fact Checker application.
+ * Main landing page of the STEELMAN application.
  * Features:
- * - Claim input form
- * - Information about the steelman technique
- * - Feature highlights
+ * - URL input form
+ * - Minimalist design
  * - Mobile-responsive design
  */
 
@@ -16,71 +15,36 @@ import ClaimInput from '@/components/ClaimInput';
  * 
  * Renders the main page with:
  * - Header and description
- * - Claim input form
- * - Feature information cards
+ * - URL input form
  * - Footer disclaimer
  */
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-      <div className="max-w-3xl mx-auto">
+    <main className="min-h-screen bg-white dark:bg-black py-12 px-4 flex flex-col items-center justify-center">
+      <div className="w-full max-w-2xl mx-auto space-y-8">
         {/* Header Section */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            Fact Checker
+        <div className="text-center flex flex-col items-center">
+          {/* Logo */}
+          <div className="relative -mb-8 z-10">
+            <img src="/logo.png" alt="Steelman Logo" className="h-64 w-64 object-contain" />
+          </div>
+          <h1 className="text-6xl md:text-8xl font-black text-black dark:text-white tracking-tighter uppercase leading-none relative z-0">
+            STEELMAN
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Get steelman counter-arguments to help you critically evaluate
-            claims. We present the strongest possible opposing viewpoints using
-            AI.
+          <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 font-light max-w-xl mx-auto mt-6">
+            Enter an article URL. We'll construct the strongest possible counter-argument.
           </p>
         </div>
 
         {/* Main Input Form */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 md:p-8 mb-8">
+        <div className="bg-transparent">
           <ClaimInput />
         </div>
 
-        {/* Feature Information Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {/* Steelman Technique Card */}
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <h2 className="font-semibold mb-2 text-gray-900 dark:text-gray-100">
-              🔍 Steelman Technique
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              We present the strongest possible counter-arguments, not weak
-              strawman versions
-            </p>
-          </div>
-
-          {/* AI-Powered Card */}
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <h2 className="font-semibold mb-2 text-gray-900 dark:text-gray-100">
-              🤖 AI-Powered
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Advanced AI analyzes claims and generates thoughtful
-              counter-arguments
-            </p>
-          </div>
-
-          {/* Mobile-Friendly Card */}
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <h2 className="font-semibold mb-2 text-gray-900 dark:text-gray-100">
-              📱 Mobile-Friendly
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Optimized for mobile devices with a clean, responsive interface
-            </p>
-          </div>
-        </div>
-
         {/* Footer Disclaimer */}
-        <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+        <div className="text-center text-xs text-gray-400 dark:text-gray-600 uppercase tracking-widest mt-16">
           <p>
-            This tool is designed to help you think critically. Always verify
-            information from multiple sources.
+            Designed for critical thinking. Verify all information.
           </p>
         </div>
       </div>
