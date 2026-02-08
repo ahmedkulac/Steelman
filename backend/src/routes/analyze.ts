@@ -51,7 +51,11 @@ router.post('/', async (req: Request, res: Response) => {
         const analysis = await analyzeArticle({
             title: article.title || 'Untitled Article',
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             content: article.textContent || '', // distinct from .content (HTML)
+=======
+            content: article.textContent || '',
+>>>>>>> Stashed changes
 =======
             content: article.textContent || '',
 >>>>>>> Stashed changes
