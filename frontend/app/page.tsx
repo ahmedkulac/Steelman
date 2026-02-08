@@ -1,41 +1,62 @@
+import ClaimInput from '@/components/ClaimInput';
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm">
-        <h1 className="text-4xl font-bold text-center mb-8">
-          🚀 Hackathon Starter
-        </h1>
-        <p className="text-center text-lg mb-4">
-          Your hackathon project is ready to go!
-        </p>
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 border rounded-lg">
-            <h2 className="font-semibold mb-2">⚡ Fast Setup</h2>
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            Fact Checker
+          </h1>
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+            Get steelman counter-arguments to help you critically evaluate
+            claims. We present the strongest possible opposing viewpoints using
+            AI.
+          </p>
+        </div>
+
+        {/* Main Input Form */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 md:p-8 mb-8">
+          <ClaimInput />
+        </div>
+
+        {/* Info Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <h2 className="font-semibold mb-2 text-gray-900 dark:text-gray-100">
+              🔍 Steelman Technique
+            </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Get started in minutes with pre-configured tools
+              We present the strongest possible counter-arguments, not weak
+              strawman versions
             </p>
           </div>
-          <div className="p-4 border rounded-lg">
-            <h2 className="font-semibold mb-2">🔧 Modern Stack</h2>
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <h2 className="font-semibold mb-2 text-gray-900 dark:text-gray-100">
+              🤖 AI-Powered
+            </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Next.js, TypeScript, Express, and more
+              Advanced AI analyzes claims and generates thoughtful
+              counter-arguments
             </p>
           </div>
-          <div className="p-4 border rounded-lg">
-            <h2 className="font-semibold mb-2">🐳 Docker Ready</h2>
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <h2 className="font-semibold mb-2 text-gray-900 dark:text-gray-100">
+              📱 Mobile-Friendly
+            </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Deploy anywhere with containerization
+              Optimized for mobile devices with a clean, responsive interface
             </p>
           </div>
         </div>
-        <div className="mt-8 text-center">
-          <a
-            href="/api/health"
-            className="text-blue-600 hover:underline"
-            target="_blank"
-          >
-            Check API Health →
-          </a>
+
+        {/* Footer Note */}
+        <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+          <p>
+            This tool is designed to help you think critically. Always verify
+            information from multiple sources.
+          </p>
         </div>
       </div>
     </main>

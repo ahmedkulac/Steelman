@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Hackathon Starter",
-  description: "A comprehensive hackathon starter template",
+  title: "Fact Checker - Steelman Counter-Arguments",
+  description: "Get AI-powered steelman counter-arguments to help you critically evaluate claims",
 };
 
 export default function RootLayout({

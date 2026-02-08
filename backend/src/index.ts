@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import apiRoutes from './routes';
+import { initRedis } from './utils/cache';
 
 dotenv.config();
 
@@ -34,6 +35,9 @@ app.use('/api', apiRoutes);
 // Error handling
 app.use(notFoundHandler);
 app.use(errorHandler);
+
+// Initialize Redis (non-blocking)
+initRedis().catch(console.error);
 
 // Start server
 app.listen(PORT, () => {
