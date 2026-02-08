@@ -136,15 +136,27 @@ export default function AnalyzePage() {
                 {/* Results Section */}
                 {result && (
                     <div className="space-y-6">
-                        <button
-                            onClick={() => setResult(null)}
-                            className="mb-4 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Analyze Another Article
-                        </button>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                            <Link
+                                href="/"
+                                className="group flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
+                            >
+                                <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Back to Home
+                            </Link>
+
+                            <button
+                                onClick={() => setResult(null)}
+                                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline flex items-center gap-2 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Analyze Another Article
+                            </button>
+                        </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             {/* Left Column: Article Text */}

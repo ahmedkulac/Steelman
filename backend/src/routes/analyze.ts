@@ -2,6 +2,8 @@
 import { Router, Request, Response } from 'express';
 import axios from 'axios';
 import { JSDOM } from 'jsdom';
+import * as https from 'https';
+import * as http from 'http';
 import { Readability } from '@mozilla/readability';
 import { analyzeArticle } from '../services/aiService';
 import { detectPlatform, extractSocialMediaContent } from '../utils/socialMediaExtractor';
@@ -106,6 +108,10 @@ router.post('/', async (req: Request, res: Response) => {
                 let htmlContent = '';
                 let fetchError;
 
+                // Create agents that force IPv4 to avoid ENOTFOUND issues on some networks
+                const httpsAgent = new https.Agent({ family: 4, rejectUnauthorized: false });
+                const httpAgent = new http.Agent({ family: 4 });
+
                 // Try fetching with different User-Agents
                 for (const ua of userAgents) {
                     try {
@@ -127,6 +133,8 @@ router.post('/', async (req: Request, res: Response) => {
                             timeout: 15000,
                             maxRedirects: 5,
                             validateStatus: (status) => status < 500,
+                            httpsAgent,
+                            httpAgent,
                         });
 
                         if (response.status === 200 && typeof response.data === 'string' && response.data.length > 500) {

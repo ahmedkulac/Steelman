@@ -48,7 +48,7 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
         )}
       </div>
 
-      {/* Loading State */}
+      {/* Loading State - Inline */}
       {(processingStatus === 'pending' || processingStatus === 'processing') && (
         <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
