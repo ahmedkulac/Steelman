@@ -195,6 +195,7 @@ function AnalyzeContent() {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     const [showTextFallback, setShowTextFallback] = useState(false);
     const [textInput, setTextInput] = useState('');
 
@@ -231,6 +232,8 @@ function AnalyzeContent() {
         }
     };
 
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
