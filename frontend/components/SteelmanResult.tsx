@@ -115,12 +115,7 @@ export default function SteelmanResult({ claim }: SteelmanResultProps) {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Counter-Argument {index + 1}
               </h3>
-              {/* Strength Badge */}
-              {arg.strength && (
-                <span className="px-3 py-1 text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full">
-                  Strength: {arg.strength}/10
-                </span>
-              )}
+
             </div>
 
             {/* Counter-argument Content */}
